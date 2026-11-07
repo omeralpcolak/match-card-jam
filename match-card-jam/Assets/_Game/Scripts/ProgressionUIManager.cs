@@ -1,4 +1,5 @@
 using DG.Tweening;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,6 +12,13 @@ public class ProgressionUIManager : MonoBehaviour
     [Header("UI Elements")]
     [Tooltip("Doldurulacak UI Image bileşeni (Image Type: Filled olmalı).")]
     [SerializeField] private Image fillImage;
+
+    [Tooltip("Seviye numarasını gösteren TextMeshProUGUI bileşeni.")]
+    [SerializeField] private TextMeshProUGUI levelNoText;
+
+    [Header("Text Format")]
+    [Tooltip("Seviye metninin öneki (Örn: 'Level ' -> 'Level 1').")]
+    [SerializeField] private string levelPrefix = "Level ";
 
     [Header("Animation Settings")]
     [Tooltip("Barın yeni değere dolma süresi.")]
@@ -29,16 +37,20 @@ public class ProgressionUIManager : MonoBehaviour
     [Tooltip("Zıplama süresi.")]
     [SerializeField] private float punchDuration = 0.2f;
 
+    private const string KEY_CURRENT_LEVEL = "CurrentLevel";
+
     private Tween fillTween;
     private Tween punchTween;
     private Vector3 initialScale;
     private bool isInitialized;
 
     public bool IsInitialized => isInitialized;
+    public TextMeshProUGUI LevelNoText => levelNoText;
 
     private void Awake()
     {
         CacheComponents();
+        UpdateLevelText();
     }
 
     private void OnDisable()
@@ -48,11 +60,20 @@ public class ProgressionUIManager : MonoBehaviour
 
     /// <summary>
     /// LevelManager tarafından seviye başlangıcında doğrudan çağrılır.
-    /// Başlangıç durumunu anında kurar.
+    /// Başlangıç durumunu ve seviye numarasını anında kurar.
     /// </summary>
-    public void Initialize(int remainingItems = 0, int totalItems = 0)
+    public void Initialize(int remainingItems = 0, int totalItems = 0, int levelNumber = -1)
     {
         CacheComponents();
+
+        if (levelNumber > 0)
+        {
+            SetLevelNumber(levelNumber);
+        }
+        else
+        {
+            UpdateLevelText();
+        }
 
         if (totalItems > 0)
         {
@@ -66,6 +87,27 @@ public class ProgressionUIManager : MonoBehaviour
         isInitialized = true;
     }
 
+    /// <summary>
+    /// Oyuncunun PlayerPrefs'teki güncel seviyesini okur ve metni günceller.
+    /// Prefab'ler başa sarsa bile gerçek oyuncu seviyesini gösterir (Level 1, Level 2, Level 4...).
+    /// </summary>
+    public void UpdateLevelText()
+    {
+        int currentLevel = PlayerPrefs.GetInt(KEY_CURRENT_LEVEL, 1);
+        SetLevelNumber(currentLevel);
+    }
+
+    /// <summary>
+    /// Seviye numarasını doğrudan verilen değere göre günceller.
+    /// </summary>
+    public void SetLevelNumber(int levelNumber)
+    {
+        if (levelNoText != null)
+        {
+            levelNoText.text = $"{levelPrefix}{levelNumber}";
+        }
+    }
+
     private void CacheComponents()
     {
         if (initialScale == Vector3.zero)
@@ -76,6 +118,11 @@ public class ProgressionUIManager : MonoBehaviour
         if (fillImage == null)
         {
             fillImage = GetComponentInChildren<Image>();
+        }
+
+        if (levelNoText == null)
+        {
+            levelNoText = GetComponentInChildren<TextMeshProUGUI>(true);
         }
     }
 

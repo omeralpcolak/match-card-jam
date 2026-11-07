@@ -682,6 +682,17 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!114 &1035770405 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2495228632126572395, guid: f02321e9ffddb413ca84fdd6fa8517dd, type: 3}
+  m_PrefabInstance: {fileID: 8423893158191160085}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
 --- !u!1 &1063008623
 GameObject:
   m_ObjectHideFlags: 0
@@ -1588,6 +1599,7 @@ MonoBehaviour:
   inputManager: {fileID: 1524983892}
   progressionUIManager: {fileID: 1494929704053833781}
   timerUIManager: {fileID: 1917943152}
+  levelDatabase: {fileID: 0}
   currentLevelManager: {fileID: 0}
 --- !u!1 &1890023535
 GameObject:
@@ -1775,7 +1787,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -78}
+  m_AnchoredPosition: {x: 0, y: -100}
   m_SizeDelta: {x: 300, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1917943152
@@ -2205,9 +2217,41 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2495228632126572395, guid: f02321e9ffddb413ca84fdd6fa8517dd, type: 3}
+      propertyPath: m_fontSize
+      value: 50
+      objectReference: {fileID: 0}
+    - target: {fileID: 2495228632126572395, guid: f02321e9ffddb413ca84fdd6fa8517dd, type: 3}
+      propertyPath: m_fontSizeBase
+      value: 50
+      objectReference: {fileID: 0}
     - target: {fileID: 2702912954093908788, guid: f02321e9ffddb413ca84fdd6fa8517dd, type: 3}
       propertyPath: m_Name
       value: ProgressionBar
+      objectReference: {fileID: 0}
+    - target: {fileID: 2816508038624846054, guid: f02321e9ffddb413ca84fdd6fa8517dd, type: 3}
+      propertyPath: levelNoText
+      value: 
+      objectReference: {fileID: 1035770405}
+    - target: {fileID: 3220634747860736943, guid: f02321e9ffddb413ca84fdd6fa8517dd, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 70
+      objectReference: {fileID: 0}
+    - target: {fileID: 6792189167098229316, guid: f02321e9ffddb413ca84fdd6fa8517dd, type: 3}
+      propertyPath: m_Name
+      value: LevelNoText
+      objectReference: {fileID: 0}
+    - target: {fileID: 7511009153734339832, guid: f02321e9ffddb413ca84fdd6fa8517dd, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 70
+      objectReference: {fileID: 0}
+    - target: {fileID: 8212355681247262770, guid: f02321e9ffddb413ca84fdd6fa8517dd, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 400
+      objectReference: {fileID: 0}
+    - target: {fileID: 8212355681247262770, guid: f02321e9ffddb413ca84fdd6fa8517dd, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 70
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
