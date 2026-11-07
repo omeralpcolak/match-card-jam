@@ -5,7 +5,10 @@ using UnityEngine.InputSystem;
 
 public class InputManager : MonoBehaviour
 {
-    public static InputManager Instance { get; private set; }
+    private static InputManager _fallbackInstance;
+    public static InputManager Instance => LevelManager.Instance != null && LevelManager.Instance.InputManager != null 
+        ? LevelManager.Instance.InputManager 
+        : _fallbackInstance;
 
     /// <summary>
     /// Bir MatchItem onaylanıp dock'a gönderilmek üzere toplandığında fırlar.
@@ -34,12 +37,20 @@ public class InputManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        _fallbackInstance = this;
+
+        if (LevelManager.Instance == null)
         {
-            Destroy(gameObject);
-            return;
+            Initialize();
         }
-        Instance = this;
+    }
+
+    /// <summary>
+    /// LevelManager tarafından açık sırayla çağrılır.
+    /// </summary>
+    public void Initialize()
+    {
+        _fallbackInstance = this;
 
         if (targetCamera == null)
         {
@@ -54,6 +65,16 @@ public class InputManager : MonoBehaviour
 
     private void HandlePointerInput()
     {
+        // Seviye aktif oynanmıyorsa (Won, Lost veya Paused ise) girdi alımını durdur
+        if (LevelManager.Instance != null && LevelManager.Instance.CurrentState != LevelManager.LevelState.Playing)
+        {
+            if (currentlySelectedItem != null)
+            {
+                ResetCurrentSelection();
+            }
+            return;
+        }
+
         Pointer pointer = Pointer.current;
         if (pointer == null) return;
 

@@ -21,6 +21,7 @@ Shader "Custom/URP_Outline"
             Cull Front
             ZWrite On
             ZTest LEqual
+            Offset 1, 1
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -48,20 +49,31 @@ Shader "Custom/URP_Outline"
             {
                 Varyings output;
 
-                // 1. Pozisyon ve normali dünya koordinatına çevir
+                // 1. Kartın kalınlık (Y) eksenindeki genişlemeyi sıfırla!
+                // Kart sadece X ve Z (çevre ve yuvarlak köşeler) boyunca genişlemelidir.
+                // Eğer Y genişlerse kart balon gibi şişer ve altındaki/üstündeki kartların içine saplanır.
+                float3 normal = input.normalOS;
+                normal.y = 0.0;
+
+                float len = length(normal.xz);
+                if (len > 0.001)
+                {
+                    normal.xz /= len;
+                }
+                else
+                {
+                    normal = float3(0, 0, 0);
+                }
+
+                // 2. Kamera mesafesine göre genişlik telafisi
                 float3 posWS = TransformObjectToWorld(input.positionOS.xyz);
-                float3 normalWS = normalize(TransformObjectToWorldNormal(input.normalOS));
-
-                // 2. Kamera mesafesini al (Scene View ile Game View mesafesi farkını dengeler)
                 float dist = length(posWS - _WorldSpaceCameraPos.xyz);
-
-                // 3. Mesafe dengeli 3D genişletme:
-                // Kamera 25 birim uzakta da olsa, 2 birim yakında da olsa
-                // 3D normaller doğrultusunda tüm kenarlar ve köşeler eşit ve sabit piksel kalınlığında genişler!
                 float offset = _OutlineWidth * dist;
-                posWS += normalWS * offset;
 
-                output.positionCS = TransformWorldToHClip(posWS);
+                // 3. Yalnızca kartın çevresi boyunca dışa doğru genişlet
+                float3 extrudedPosOS = input.positionOS.xyz + normal * offset;
+
+                output.positionCS = TransformObjectToHClip(extrudedPosOS);
                 return output;
             }
 

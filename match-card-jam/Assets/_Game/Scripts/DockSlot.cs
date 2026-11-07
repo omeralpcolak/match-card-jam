@@ -67,9 +67,9 @@ public class DockSlot : MonoBehaviour
     }
 
     /// <summary>
-    /// Araya yeni bir kart girdiğinde mevcut kartın bir sonraki slota yumuşakça kayması.
+    /// Araya yeni bir kart girdiğinde veya boşluklar kapandığında mevcut kartın yeni slota yumuşakça kayması.
     /// </summary>
-    public void SlideItemToHere(MatchItem item, float duration, Ease ease = Ease.OutQuad)
+    public void SlideItemToHere(MatchItem item, float duration, Ease ease = Ease.OutQuad, Action onComplete = null)
     {
         currentItem = item;
 
@@ -81,6 +81,11 @@ public class DockSlot : MonoBehaviour
         seq.Join(item.transform.DOLocalMove(Vector3.zero, duration).SetEase(ease));
         seq.Join(item.transform.DOLocalRotate(Vector3.zero, duration).SetEase(ease));
         seq.Join(item.transform.DOScale(targetScale, duration).SetEase(ease));
+
+        seq.OnComplete(() =>
+        {
+            onComplete?.Invoke();
+        });
     }
 
     /// <summary>
