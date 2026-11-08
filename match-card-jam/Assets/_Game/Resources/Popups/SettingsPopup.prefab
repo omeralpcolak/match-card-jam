@@ -910,7 +910,7 @@ MonoBehaviour:
   m_ScaleFactor: 1
   m_ReferenceResolution: {x: 1080, y: 1920}
   m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0
+  m_MatchWidthOrHeight: 1
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
@@ -947,13 +947,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SettingsPopup
   backdropCanvasGroup: {fileID: 4906321162708050628}
   popupContent: {fileID: 5397994273105279850}
+  defaultOpenDuration: 0.3
+  defaultCloseDuration: 0.2
+  defaultOpenEase: 27
+  defaultCloseEase: 26
   closeButton: {fileID: 6540628917265040217}
   closeOnBackdropClick: 1
   backdropButton: {fileID: 5524184237582334160}
-  openDuration: 0.3
-  closeDuration: 0.2
-  openEase: 27
-  closeEase: 26
   soundButton: {fileID: 2361772202424209475}
   soundIconImage: {fileID: 4499466499650658383}
   soundOnSprite: {fileID: 21300000, guid: 901d64fc6ad9d44799c2ad0fd4f182d2, type: 3}
@@ -965,7 +965,7 @@ MonoBehaviour:
   hapticButton: {fileID: 8466517314672071004}
   hapticIconImage: {fileID: 5237552571927438140}
   hapticOnSprite: {fileID: 21300000, guid: f6de2a7823f2e4282b6a118ee77c977e, type: 3}
-  hapticOffSprite: {fileID: 21300000, guid: c50a0f6e42d5c4abeb157b1b97e14ae8, type: 3}
+  hapticOffSprite: {fileID: 21300000, guid: 7e2ca927896343f0bf37952b0614f955, type: 3}
   homeButton: {fileID: 1794595322645053747}
   restartButton: {fileID: 5707071714438296765}
   mainMenuSceneName: MainMenu

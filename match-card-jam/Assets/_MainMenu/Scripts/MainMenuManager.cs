@@ -37,6 +37,7 @@ public class MainMenuManager : MonoBehaviour
     {
         Instance = this;
 
+        AppBootstrapper.Initialize();
         AutoResolveReferences();
         SetupButtonListeners();
     }
@@ -87,7 +88,7 @@ public class MainMenuManager : MonoBehaviour
 
     private void OnSettingsClicked()
     {
-        SettingsPopup.Show();
+        SettingsMainMenuPopup.Show();
     }
 
     private void AutoResolveReferences()
@@ -105,8 +106,14 @@ public class MainMenuManager : MonoBehaviour
 
         if (settingsButton == null)
         {
-            GameObject settingsGo = GameObject.Find("SettingsButton") ?? GameObject.Find("Settings");
-            if (settingsGo != null) settingsButton = settingsGo.GetComponent<Button>();
+            GameObject settingsGo = GameObject.Find("SettingsButton")
+                ?? GameObject.Find("Settings")
+                ?? GameObject.Find("MainMenuSettings");
+
+            if (settingsGo != null)
+            {
+                settingsButton = settingsGo.GetComponentInChildren<Button>(true);
+            }
         }
     }
 

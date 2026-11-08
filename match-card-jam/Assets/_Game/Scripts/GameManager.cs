@@ -43,6 +43,7 @@ public class GameManager : MonoBehaviour
         }
         Instance = this;
 
+        AppBootstrapper.Initialize();
         ResolveSubsystems();
     }
 
