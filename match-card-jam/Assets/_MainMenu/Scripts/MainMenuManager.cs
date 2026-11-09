@@ -25,6 +25,20 @@ public class MainMenuManager : MonoBehaviour
     [Tooltip("Optional settings button.")]
     [SerializeField] private Button settingsButton;
 
+    [Header("Life UI References")]
+    [Tooltip("Text inside the heart icon showing current life count.")]
+    [SerializeField] private TMPro.TextMeshProUGUI lifeCountText;
+
+    [Tooltip("Text next to the heart icon showing regen countdown timer or FULL.")]
+    [SerializeField] private TMPro.TextMeshProUGUI lifeTimeText;
+
+    [Tooltip("Green plus icon next to the life container.")]
+    [SerializeField] private GameObject plusIcon;
+
+    [Header("Economy UI References")]
+    [Tooltip("Text displaying current player coin balance.")]
+    [SerializeField] private TMPro.TextMeshProUGUI coinText;
+
     [Header("Scene Navigation")]
     [Tooltip("Name of the core gameplay scene.")]
     [SerializeField] private string gameSceneName = "Game";
@@ -40,11 +54,64 @@ public class MainMenuManager : MonoBehaviour
         AppBootstrapper.Initialize();
         AutoResolveReferences();
         SetupButtonListeners();
+        SetupLifeListeners();
     }
 
     private void Start()
     {
         RefreshMenu();
+        UpdateLifeDisplay(GameData.Lives);
+        UpdateTimerDisplay(GameData.RemainingLifeRegenSeconds);
+        UpdateCoinDisplay(GameData.Coins);
+    }
+
+    private void SetupLifeListeners()
+    {
+        GameData.OnLivesChanged += UpdateLifeDisplay;
+        GameData.OnLifeTimerTick += UpdateTimerDisplay;
+        GameData.OnCoinsChanged += UpdateCoinDisplay;
+    }
+
+    private void UpdateCoinDisplay(int coins)
+    {
+        if (coinText != null)
+        {
+            coinText.text = coins.ToString("N0");
+        }
+    }
+
+    private void UpdateLifeDisplay(int lives)
+    {
+        if (lifeCountText != null)
+        {
+            lifeCountText.text = lives.ToString();
+        }
+
+        bool isFull = lives >= LifeManager.MAX_LIVES;
+        if (plusIcon != null)
+        {
+            plusIcon.SetActive(!isFull);
+        }
+
+        if (isFull && lifeTimeText != null)
+        {
+            lifeTimeText.text = "FULL";
+        }
+    }
+
+    private void UpdateTimerDisplay(float remainingSeconds)
+    {
+        if (lifeTimeText == null) return;
+
+        if (LifeManager.IsFull)
+        {
+            lifeTimeText.text = "FULL";
+            return;
+        }
+
+        int minutes = Mathf.FloorToInt(remainingSeconds / 60f);
+        int seconds = Mathf.FloorToInt(remainingSeconds % 60f);
+        lifeTimeText.text = $"{minutes:00}:{seconds:00}";
     }
 
     private void SetupButtonListeners()
@@ -65,11 +132,9 @@ public class MainMenuManager : MonoBehaviour
     /// </summary>
     public void RefreshMenu()
     {
-        int currentLevel = PlayerPrefs.GetInt(KEY_CURRENT_LEVEL, 1);
-
         if (levelPathManager != null)
         {
-            levelPathManager.UpdateLevelPath(currentLevel);
+            levelPathManager.UpdateLevelPath(GameData.CurrentLevel);
         }
     }
 
@@ -82,8 +147,26 @@ public class MainMenuManager : MonoBehaviour
             playButton.transform.DOPunchScale(Vector3.one * 0.12f, 0.25f, 1, 0.5f);
         }
 
-        // Smooth fade-to-black transition into the gameplay scene
-        SceneTransition.LoadScene(gameSceneName);
+        // 1. Can 0 Kontrolü: Seviyeye giriş engellenir
+        if (!LifeManager.HasLives)
+        {
+            Debug.LogWarning("<color=#e74c3c><b>[MainMenuManager]</b> Can 0! OutOfLives popupı açılacak (seviye başlatılamıyor).</color>");
+            if (playButton != null)
+            {
+                playButton.transform.DOShakePosition(0.35f, 12f, 14, 90f, false, true);
+            }
+            return;
+        }
+
+        // 2. Sahne kararma geçişi sırasında UI'ın (özellikle FULL yazısının aniden süreye) değişmesini dondur
+        LifeManager.OnLivesChanged -= UpdateLifeDisplay;
+        LifeManager.OnTimerTick -= UpdateTimerDisplay;
+
+        // 3. Can 1 eksiltilir ve seviyeye girilir
+        if (LifeManager.TryConsumeLife())
+        {
+            SceneTransition.LoadScene(gameSceneName);
+        }
     }
 
     private void OnSettingsClicked()
@@ -115,10 +198,55 @@ public class MainMenuManager : MonoBehaviour
                 settingsButton = settingsGo.GetComponentInChildren<Button>(true);
             }
         }
+
+        // Auto-resolve Life UI elements if not explicitly assigned
+        if (lifeCountText == null)
+        {
+            GameObject countGo = GameObject.Find("LifeIcon/Text (TMP)");
+            if (countGo != null)
+            {
+                lifeCountText = countGo.GetComponent<TMPro.TextMeshProUGUI>();
+            }
+            else
+            {
+                GameObject lifeIconGo = GameObject.Find("LifeIcon");
+                if (lifeIconGo != null)
+                {
+                    lifeCountText = lifeIconGo.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+                }
+            }
+        }
+
+        if (lifeTimeText == null)
+        {
+            GameObject timeGo = GameObject.Find("LifeTimeText");
+            if (timeGo != null)
+            {
+                lifeTimeText = timeGo.GetComponent<TMPro.TextMeshProUGUI>();
+            }
+        }
+
+        if (plusIcon == null)
+        {
+            plusIcon = GameObject.Find("PlusIconImg");
+        }
+
+        if (coinText == null)
+        {
+            GameObject coinGo = GameObject.Find("Coin/Bg/Text (TMP)");
+            if (coinGo != null)
+            {
+                coinText = coinGo.GetComponent<TMPro.TextMeshProUGUI>();
+            }
+        }
     }
 
     private void OnDestroy()
     {
+        GameData.OnLivesChanged -= UpdateLifeDisplay;
+        GameData.OnLifeTimerTick -= UpdateTimerDisplay;
+        GameData.OnCoinsChanged -= UpdateCoinDisplay;
+
         if (Instance == this)
         {
             Instance = null;

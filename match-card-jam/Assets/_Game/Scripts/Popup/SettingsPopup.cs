@@ -68,9 +68,6 @@ public class SettingsPopup : PopupBase<SettingsPopup>
     [Tooltip("Button that navigates to the main menu.")]
     [SerializeField] private Button homeButton;
 
-    [Tooltip("Button that reloads the current scene.")]
-    [SerializeField] private Button restartButton;
-
     [Tooltip("Name of the main menu scene.")]
     [SerializeField] private string mainMenuSceneName = "MainMenu";
 
@@ -100,7 +97,6 @@ public class SettingsPopup : PopupBase<SettingsPopup>
 
         // Navigation Buttons
         if (homeButton != null) homeButton.onClick.AddListener(OnHomeClicked);
-        if (restartButton != null) restartButton.onClick.AddListener(OnRestartClicked);
 
         UpdateAllVisuals();
     }
@@ -208,7 +204,10 @@ public class SettingsPopup : PopupBase<SettingsPopup>
 
     private void OnHomeClicked()
     {
-        CloseImmediate();
+        if (homeButton != null) homeButton.interactable = false;
+
+        // Seviye ortasında ayarlardan çıkıldığı için can iade hakkı düşer (can geri verilmez)
+        LifeManager.ForfeitPendingRefund();
 
         if (Application.CanStreamedLevelBeLoaded(mainMenuSceneName))
         {
@@ -218,12 +217,6 @@ public class SettingsPopup : PopupBase<SettingsPopup>
         {
             Debug.LogWarning($"[SettingsPopup] Scene '{mainMenuSceneName}' is not added to Build Settings or does not exist yet!");
         }
-    }
-
-    private void OnRestartClicked()
-    {
-        CloseImmediate();
-        SceneTransition.ReloadCurrentScene();
     }
 
     #endregion

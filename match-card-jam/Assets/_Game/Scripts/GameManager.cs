@@ -114,7 +114,7 @@ public class GameManager : MonoBehaviour
         // 2. Sahnede yoksa LevelDatabase'den mevcut seviyeyi masaya yarat
         if (currentLevelManager == null)
         {
-            int currentLevel = PlayerPrefs.GetInt("CurrentLevel", 1);
+            int currentLevel = GameData.CurrentLevel;
             GameObject levelPrefab = (levelDatabase != null)
                 ? levelDatabase.GetLevelPrefab(currentLevel)
                 : LevelDatabase.GetPrefab(currentLevel);
@@ -146,10 +146,11 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("<color=#2ecc71><b>[GameManager]</b> Seviye başarıyla tamamlandı!</color>");
 
-        // Advance level progression
-        int currentLevel = PlayerPrefs.GetInt("CurrentLevel", 1);
-        PlayerPrefs.SetInt("CurrentLevel", currentLevel + 1);
-        PlayerPrefs.Save();
+        // 1. Seviye kazanıldığı için eksilen can iade edilir
+        GameData.RefundLife();
+
+        // 2. Advance level progression
+        GameData.AdvanceLevel();
 
         // Wait briefly for the last match animations to finish, then show the win popup
         DG.Tweening.DOVirtual.DelayedCall(0.5f, () =>
@@ -161,6 +162,15 @@ public class GameManager : MonoBehaviour
     private void HandleLevelLost(LevelManager.LoseReason reason)
     {
         Debug.Log($"<color=#e74c3c><b>[GameManager]</b> Seviye kaybedildi. Sebep: {reason}</color>");
+
+        // Seviye kaybedildiği için can iade hakkı düşer, can yenilenme süreci kesintisiz devam eder
+        LifeManager.ForfeitPendingRefund();
+
+        // Wait briefly for the last card dock animation or timer to settle, then show fail popup
+        DG.Tweening.DOVirtual.DelayedCall(0.5f, () =>
+        {
+            LevelFailPopup.Show();
+        });
     }
 
     /// <summary>
@@ -172,11 +182,11 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Reloads the active game scene using a smooth fade transition.
-    /// Can be linked directly to HUD RestartButton onClick in inspector.
+    /// Opens the Restart Warning popup before reloading the level.
+    /// Linked directly to HUD RestartButton onClick in GameCanvas inspector.
     /// </summary>
     public void RestartCurrentScene()
     {
-        SceneTransition.ReloadCurrentScene();
+        RestartWarningPopup.Show();
     }
 }

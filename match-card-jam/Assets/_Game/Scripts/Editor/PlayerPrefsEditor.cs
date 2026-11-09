@@ -15,6 +15,7 @@ public class PlayerPrefsEditor : EditorWindow
     // Known game keys
     private const string KEY_CURRENT_LEVEL = "CurrentLevel";
     private const string KEY_PLAYER_COINS = "PlayerCoins";
+    private const string KEY_PLAYER_LIVES = "PlayerLives";
     private const string KEY_SOUND = "Setting_Sound";
     private const string KEY_MUSIC = "Setting_Music";
     private const string KEY_HAPTIC = "Setting_Haptic";
@@ -121,33 +122,80 @@ public class PlayerPrefsEditor : EditorWindow
         EditorGUILayout.Space(4);
 
         // 2. Player Coins
-        int coins = PlayerPrefs.GetInt(KEY_PLAYER_COINS, 0);
+        int coins = GameData.Coins;
         EditorGUILayout.BeginHorizontal();
         EditorGUILayout.LabelField("Player Coins:", GUILayout.Width(110));
         int newCoins = EditorGUILayout.IntField(coins, GUILayout.Width(60));
         if (newCoins != coins)
         {
-            PlayerPrefs.SetInt(KEY_PLAYER_COINS, Mathf.Max(0, newCoins));
-            PlayerPrefs.Save();
+            GameData.Coins = newCoins;
         }
 
         if (GUILayout.Button("Reset (0)", EditorStyles.miniButtonLeft))
         {
-            SetInt(KEY_PLAYER_COINS, 0);
+            GameData.Coins = 0;
         }
         if (GUILayout.Button("+100", EditorStyles.miniButtonMid))
         {
-            SetInt(KEY_PLAYER_COINS, coins + 100);
+            GameData.AddCoins(100);
         }
         if (GUILayout.Button("+500", EditorStyles.miniButtonRight))
         {
-            SetInt(KEY_PLAYER_COINS, coins + 500);
+            GameData.AddCoins(500);
         }
         EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.Space(4);
 
-        // 3. Audio & Haptic Settings
+        // 3. Player Lives
+        int lives = PlayerPrefs.GetInt(KEY_PLAYER_LIVES, 5);
+        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.LabelField("Player Lives:", GUILayout.Width(110));
+        int newLives = EditorGUILayout.IntField(lives, GUILayout.Width(60));
+        if (newLives != lives)
+        {
+            if (Application.isPlaying) LifeManager.SetLives(newLives);
+            else SetInt(KEY_PLAYER_LIVES, Mathf.Clamp(newLives, 0, 5));
+        }
+
+        if (GUILayout.Button("0", EditorStyles.miniButtonLeft))
+        {
+            if (Application.isPlaying) LifeManager.SetLives(0);
+            else SetInt(KEY_PLAYER_LIVES, 0);
+        }
+        if (GUILayout.Button("1", EditorStyles.miniButtonMid))
+        {
+            if (Application.isPlaying) LifeManager.SetLives(1);
+            else SetInt(KEY_PLAYER_LIVES, 1);
+        }
+        if (GUILayout.Button("5 (Full)", EditorStyles.miniButtonRight))
+        {
+            if (Application.isPlaying) LifeManager.SetLives(5);
+            else SetInt(KEY_PLAYER_LIVES, 5);
+        }
+        EditorGUILayout.EndHorizontal();
+
+        if (lives < 5)
+        {
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Regen Test:", GUILayout.Width(110));
+            if (GUILayout.Button("⏩ +15 Dk Simüle Et (1 Can Ekle)", EditorStyles.miniButton))
+            {
+                if (Application.isPlaying)
+                {
+                    LifeManager.SetLives(lives + 1);
+                }
+                else
+                {
+                    SetInt(KEY_PLAYER_LIVES, Mathf.Min(5, lives + 1));
+                }
+            }
+            EditorGUILayout.EndHorizontal();
+        }
+
+        EditorGUILayout.Space(4);
+
+        // 4. Audio & Haptic Settings
         EditorGUILayout.BeginHorizontal();
         EditorGUILayout.LabelField("Settings:", GUILayout.Width(110));
 
@@ -390,6 +438,7 @@ public class PlayerPrefsEditor : EditorWindow
     {
         AddKeyIfMissing(KEY_CURRENT_LEVEL);
         AddKeyIfMissing(KEY_PLAYER_COINS);
+        AddKeyIfMissing(KEY_PLAYER_LIVES);
         AddKeyIfMissing(KEY_SOUND);
         AddKeyIfMissing(KEY_MUSIC);
         AddKeyIfMissing(KEY_HAPTIC);

@@ -36,8 +36,8 @@ public class LevelPathManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI futureLevelText;
 
     [Header("Display Settings")]
-    [Tooltip("Prefix for the level label (e.g. 'Level ' resulting in 'Level 1').")]
-    [SerializeField] private string levelPrefix = "Level ";
+    [Tooltip("Prefix for the level label (e.g. 'Level'). The level number is placed on the next line.")]
+    [SerializeField] private string levelPrefix = "Level";
 
     [Header("Animation Settings")]
     [Tooltip("Whether the current level node gently pulses/breathes.")]
@@ -58,13 +58,14 @@ public class LevelPathManager : MonoBehaviour
 
     /// <summary>
     /// Updates the 3 level badges with the player's progression numbers and initiates the idle pulse.
+    /// Formats the text as 'Level' followed by the number on the next line (e.g. 'Level\n1').
     /// </summary>
     public void UpdateLevelPath(int currentLevel)
     {
         // 1. Current Level
         if (currentLevelText != null)
         {
-            currentLevelText.text = $"{levelPrefix}{currentLevel}";
+            currentLevelText.text = FormatLevelText(currentLevel);
         }
 
         // Optional difficulty label logic (e.g. every 5th level is Hard)
@@ -94,16 +95,22 @@ public class LevelPathManager : MonoBehaviour
         // 2. Upcoming Levels (+1 and +2)
         if (upcomingLevelText != null)
         {
-            upcomingLevelText.text = $"{levelPrefix}{currentLevel + 1}";
+            upcomingLevelText.text = FormatLevelText(currentLevel + 1);
         }
 
         if (futureLevelText != null)
         {
-            futureLevelText.text = $"{levelPrefix}{currentLevel + 2}";
+            futureLevelText.text = FormatLevelText(currentLevel + 2);
         }
 
         // 3. Pulse Animation on Current Node
         StartPulseAnimation();
+    }
+
+    private string FormatLevelText(int level)
+    {
+        string prefix = string.IsNullOrWhiteSpace(levelPrefix) ? "Level" : levelPrefix.Trim();
+        return $"{prefix}\n{level}";
     }
 
     private void StartPulseAnimation()

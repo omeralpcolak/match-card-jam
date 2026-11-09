@@ -44,6 +44,7 @@ public class LevelWinPopup : PopupBase<LevelWinPopup>
     [Tooltip("Target scene name to load on continue.")]
     [SerializeField] private string mainMenuSceneName = "MainMenu";
 
+    private int earnedCoins = 100;
     private int displayedCoins = 0;
     private Tween coinCountTween;
     private Tween coinPunchTween;
@@ -167,8 +168,10 @@ public class LevelWinPopup : PopupBase<LevelWinPopup>
 
     private void OnContinueClicked()
     {
-        // NOTE: Coin saving logic will be integrated once the economy/wallet system is established.
-        CloseImmediate();
+        if (continueButton != null) continueButton.interactable = false;
+
+        // Earned coins are awarded to the player wallet
+        GameData.AddCoins(earnedCoins);
 
         if (Application.CanStreamedLevelBeLoaded(mainMenuSceneName))
         {
@@ -190,6 +193,7 @@ public class LevelWinPopup : PopupBase<LevelWinPopup>
         }
 
         int targetReward = baseRewardCoin * 2;
+        earnedCoins = targetReward;
         int startValue = displayedCoins;
 
         // Animate coin reward text counting up from +100 to +200

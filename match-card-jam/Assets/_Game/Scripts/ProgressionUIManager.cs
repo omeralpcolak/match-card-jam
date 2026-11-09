@@ -93,8 +93,7 @@ public class ProgressionUIManager : MonoBehaviour
     /// </summary>
     public void UpdateLevelText()
     {
-        int currentLevel = PlayerPrefs.GetInt(KEY_CURRENT_LEVEL, 1);
-        SetLevelNumber(currentLevel);
+        SetLevelNumber(GameData.CurrentLevel);
     }
 
     /// <summary>

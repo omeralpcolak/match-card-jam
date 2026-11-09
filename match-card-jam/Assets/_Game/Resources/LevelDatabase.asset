@@ -14,6 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelDatabase
   levelPrefabs:
   - {fileID: 6052245708243606166, guid: 3d50b720de4024c18af6b85613687e7d, type: 3}
-  - {fileID: 6052245708243606166, guid: 33ea28670ca1a46f08d50e5b07a4851a, type: 3}
-  - {fileID: 6052245708243606166, guid: 2a0eee8c1ce5141ac91df4d84187e4b9, type: 3}
   loopLevels: 1
