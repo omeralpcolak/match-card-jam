@@ -62,7 +62,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 2
+  m_SortingOrder: 200
   m_TargetDisplay: 0
 --- !u!114 &65500369497340179
 MonoBehaviour:
@@ -104,6 +104,28 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!114 &9182736450192837465
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 975234624682895107}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58f4a132e01b439eb412691b10a2cd69, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RestartWarningPopup
+  backdropCanvasGroup: {fileID: 1897295960629524873}
+  popupContent: {fileID: 5854038050860863726}
+  defaultOpenDuration: 0.3
+  defaultCloseDuration: 0.2
+  defaultOpenEase: 27
+  defaultCloseEase: 26
+  yesButton: {fileID: 7078925460114614209}
+  noButton: {fileID: 8671795270800695080}
+  backdropButton: {fileID: 951038190800737125}
+  closeOnBackdropClick: 1
 --- !u!1 &2597544400946325159
 GameObject:
   m_ObjectHideFlags: 0
@@ -1195,26 +1217,3 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
-
---- !u!114 &9182736450192837465
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 975234624682895107}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 58f4a132e01b439eb412691b10a2cd69, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RestartWarningPopup
-  backdropCanvasGroup: {fileID: 1897295960629524873}
-  popupContent: {fileID: 5854038050860863726}
-  defaultOpenDuration: 0.3
-  defaultCloseDuration: 0.2
-  defaultOpenEase: 27
-  defaultCloseEase: 26
-  yesButton: {fileID: 7078925460114614209}
-  noButton: {fileID: 8671795270800695080}
-  backdropButton: {fileID: 951038190800737125}
-  closeOnBackdropClick: 1

@@ -127,6 +127,7 @@ public class SettingsPopup : PopupBase<SettingsPopup>
 
     public void ToggleSound()
     {
+        SoundManager.PlayButtonSound();
         bool newState = !IsSoundEnabled;
         PlayerPrefs.SetInt(SOUND_KEY, newState ? 1 : 0);
         PlayerPrefs.Save();
@@ -137,6 +138,7 @@ public class SettingsPopup : PopupBase<SettingsPopup>
 
     public void ToggleMusic()
     {
+        SoundManager.PlayButtonSound();
         bool newState = !IsMusicEnabled;
         PlayerPrefs.SetInt(MUSIC_KEY, newState ? 1 : 0);
         PlayerPrefs.Save();
@@ -147,6 +149,7 @@ public class SettingsPopup : PopupBase<SettingsPopup>
 
     public void ToggleHaptic()
     {
+        SoundManager.PlayButtonSound();
         bool newState = !IsHapticEnabled;
         PlayerPrefs.SetInt(HAPTIC_KEY, newState ? 1 : 0);
         PlayerPrefs.Save();
@@ -204,6 +207,8 @@ public class SettingsPopup : PopupBase<SettingsPopup>
 
     private void OnHomeClicked()
     {
+        SoundManager.PlayButtonSound();
+
         if (homeButton != null) homeButton.interactable = false;
 
         // Seviye ortasında ayarlardan çıkıldığı için can iade hakkı düşer (can geri verilmez)

@@ -86,6 +86,7 @@ public static class GameData
     public static bool TryConsumeLife() => LifeManager.TryConsumeLife();
     public static void RefundLife() => LifeManager.RefundLife();
     public static void ForfeitPendingRefund() => LifeManager.ForfeitPendingRefund();
+    public static void ShowNoLivesPopup() => NoLivesLeftPopup.Show();
 
     #endregion
 

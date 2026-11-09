@@ -82,14 +82,16 @@ public class RestartWarningPopup : PopupBase<RestartWarningPopup>
     {
         if (isRestarting) return;
 
+        SoundManager.PlayButtonSound();
+
         // Can 0 kontrolü:
         if (!LifeManager.HasLives)
         {
-            Debug.LogWarning("<color=#e74c3c><b>[RestartWarningPopup]</b> Can 0! OutOfLives popupı açılacak (restart engellendi).</color>");
             if (yesButton != null)
             {
                 yesButton.transform.DOShakePosition(0.35f, 10f, 14, 90f, false, true);
             }
+            NoLivesLeftPopup.Show();
             return;
         }
 

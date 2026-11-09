@@ -59,6 +59,8 @@ public class MainMenuManager : MonoBehaviour
 
     private void Start()
     {
+        SoundManager.PlayMusic(MusicType.MainMenu, fadeDuration: 1.5f);
+
         RefreshMenu();
         UpdateLifeDisplay(GameData.Lives);
         UpdateTimerDisplay(GameData.RemainingLifeRegenSeconds);
@@ -140,6 +142,8 @@ public class MainMenuManager : MonoBehaviour
 
     private void OnPlayClicked()
     {
+        SoundManager.PlayButtonSound();
+
         if (playButton != null)
         {
             playButton.transform.DOKill();
@@ -147,14 +151,14 @@ public class MainMenuManager : MonoBehaviour
             playButton.transform.DOPunchScale(Vector3.one * 0.12f, 0.25f, 1, 0.5f);
         }
 
-        // 1. Can 0 Kontrolü: Seviyeye giriş engellenir
+        // 1. Can 0 Kontrolü: Seviyeye giriş engellenir ve NoLivesLeftPopup açılır
         if (!LifeManager.HasLives)
         {
-            Debug.LogWarning("<color=#e74c3c><b>[MainMenuManager]</b> Can 0! OutOfLives popupı açılacak (seviye başlatılamıyor).</color>");
             if (playButton != null)
             {
                 playButton.transform.DOShakePosition(0.35f, 12f, 14, 90f, false, true);
             }
+            NoLivesLeftPopup.Show();
             return;
         }
 
@@ -171,6 +175,7 @@ public class MainMenuManager : MonoBehaviour
 
     private void OnSettingsClicked()
     {
+        SoundManager.PlayButtonSound();
         SettingsMainMenuPopup.Show();
     }
 

@@ -124,6 +124,8 @@ public class BottomNavManager : MonoBehaviour
 
     private void OnHomeClicked()
     {
+        SoundManager.PlayButtonSound();
+
         if (CurrentTab != TabType.Home)
         {
             SelectTab(TabType.Home);
@@ -139,6 +141,8 @@ public class BottomNavManager : MonoBehaviour
 
     private void OnShopClicked()
     {
+        SoundManager.PlayButtonSound();
+
         if (CurrentTab != TabType.Shop)
         {
             SelectTab(TabType.Shop);
@@ -154,6 +158,8 @@ public class BottomNavManager : MonoBehaviour
 
     private void OnLockedClicked()
     {
+        SoundManager.PlayButtonSound();
+
         // Does not switch tab; shakes the lock icon
         if (lockedIcon != null)
         {

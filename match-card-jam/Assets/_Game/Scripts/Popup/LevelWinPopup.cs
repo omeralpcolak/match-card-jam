@@ -90,6 +90,8 @@ public class LevelWinPopup : PopupBase<LevelWinPopup>
     protected override void AnimateOpen(Action onComplete)
     {
         PrepareInitialVisualState();
+        SoundManager.PlaySound(SoundType.LevelComplete);
+        SoundManager.DuckMusic(0.2f, 0.4f);
 
         Sequence seq = DOTween.Sequence().SetUpdate(true);
 
@@ -168,6 +170,8 @@ public class LevelWinPopup : PopupBase<LevelWinPopup>
 
     private void OnContinueClicked()
     {
+        SoundManager.PlayButtonSound();
+
         if (continueButton != null) continueButton.interactable = false;
 
         // Earned coins are awarded to the player wallet
@@ -186,6 +190,8 @@ public class LevelWinPopup : PopupBase<LevelWinPopup>
 
     private void OnReward2xClicked()
     {
+        SoundManager.PlayButtonSound();
+
         if (reward2xButton != null)
         {
             reward2xButton.interactable = false;
@@ -217,6 +223,12 @@ public class LevelWinPopup : PopupBase<LevelWinPopup>
         }
 
         Debug.Log($"<color=#f1c40f><b>[LevelWinPopup]</b> 2x Reward claimed! Total: {targetReward}</color>");
+    }
+
+    protected override void OnClosed()
+    {
+        base.OnClosed();
+        SoundManager.UnduckMusic(0.8f);
     }
 
     private void CacheReferences()

@@ -770,7 +770,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 1
+  m_SortingOrder: 10
   m_TargetDisplay: 0
 --- !u!114 &8996746291447842384
 MonoBehaviour:
@@ -846,7 +846,6 @@ MonoBehaviour:
   hapticOnSprite: {fileID: 21300000, guid: f6de2a7823f2e4282b6a118ee77c977e, type: 3}
   hapticOffSprite: {fileID: 21300000, guid: 7e2ca927896343f0bf37952b0614f955, type: 3}
   homeButton: {fileID: 1794595322645053747}
-  restartButton: {fileID: 0}
   mainMenuSceneName: MainMenu
 --- !u!1 &5465118324847644474
 GameObject:

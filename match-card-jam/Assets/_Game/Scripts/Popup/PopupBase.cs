@@ -70,12 +70,6 @@ public abstract class PopupBase<T> : MonoBehaviour where T : PopupBase<T>
             return null;
         }
 
-        // Configure Canvas sorting if present to ensure it displays on top
-        if (instanceObj.TryGetComponent(out Canvas canvas))
-        {
-            canvas.overrideSorting = true;
-            canvas.sortingOrder = 100;
-        }
 
         currentInstance.onClosedCallback = onClosed;
         currentInstance.Open();
@@ -120,6 +114,8 @@ public abstract class PopupBase<T> : MonoBehaviour where T : PopupBase<T>
     public virtual void Close()
     {
         if (isClosing || !isPopupOpen) return;
+
+        SoundManager.PlayButtonSound();
 
         isClosing = true;
         KillActiveTweens();

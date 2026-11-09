@@ -49,6 +49,7 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
+        SoundManager.PlayMusic(MusicType.Gameplay, fadeDuration: 1.5f);
         InitializeActiveLevel();
     }
 
@@ -178,6 +179,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void OpenSettingsPopup()
     {
+        SoundManager.PlayButtonSound();
         SettingsPopup.Show();
     }
 
@@ -187,6 +189,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void RestartCurrentScene()
     {
+        SoundManager.PlayButtonSound();
         RestartWarningPopup.Show();
     }
 }

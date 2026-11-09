@@ -109,6 +109,7 @@ public class SettingsMainMenuPopup : PopupBase<SettingsMainMenuPopup>
 
     public void ToggleSound()
     {
+        SoundManager.PlayButtonSound();
         bool newState = !IsSoundEnabled;
         PlayerPrefs.SetInt(SOUND_KEY, newState ? 1 : 0);
         PlayerPrefs.Save();
@@ -119,6 +120,7 @@ public class SettingsMainMenuPopup : PopupBase<SettingsMainMenuPopup>
 
     public void ToggleMusic()
     {
+        SoundManager.PlayButtonSound();
         bool newState = !IsMusicEnabled;
         PlayerPrefs.SetInt(MUSIC_KEY, newState ? 1 : 0);
         PlayerPrefs.Save();
@@ -129,6 +131,7 @@ public class SettingsMainMenuPopup : PopupBase<SettingsMainMenuPopup>
 
     public void ToggleHaptic()
     {
+        SoundManager.PlayButtonSound();
         bool newState = !IsHapticEnabled;
         PlayerPrefs.SetInt(HAPTIC_KEY, newState ? 1 : 0);
         PlayerPrefs.Save();
@@ -186,6 +189,8 @@ public class SettingsMainMenuPopup : PopupBase<SettingsMainMenuPopup>
 
     private void OnQuitClicked()
     {
+        SoundManager.PlayButtonSound();
+
         if (quitButton != null)
         {
             quitButton.transform.DOKill();

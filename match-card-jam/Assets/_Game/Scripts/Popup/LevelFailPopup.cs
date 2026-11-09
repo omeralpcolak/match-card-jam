@@ -108,6 +108,8 @@ public class LevelFailPopup : PopupBase<LevelFailPopup>
     protected override void AnimateOpen(Action onComplete)
     {
         PrepareInitialVisualState();
+        SoundManager.PlaySound(SoundType.LevelFail);
+        SoundManager.DuckMusic(0.15f, 0.4f);
 
         Sequence seq = DOTween.Sequence().SetUpdate(true);
 
@@ -163,6 +165,8 @@ public class LevelFailPopup : PopupBase<LevelFailPopup>
 
     private void OnHomeClicked()
     {
+        SoundManager.PlayButtonSound();
+
         if (homeButton != null) homeButton.interactable = false;
 
         if (Application.CanStreamedLevelBeLoaded(mainMenuSceneName))
@@ -178,6 +182,8 @@ public class LevelFailPopup : PopupBase<LevelFailPopup>
 
     private void OnRestartClicked()
     {
+        SoundManager.PlayButtonSound();
+
         if (restartButton != null)
         {
             restartButton.transform.DOKill();
@@ -185,14 +191,14 @@ public class LevelFailPopup : PopupBase<LevelFailPopup>
             restartButton.transform.DOPunchScale(Vector3.one * 0.1f, 0.2f, 1, 0.5f);
         }
 
-        // Can 0 ise OutOfLives popupı çıkmalı, şimdilik restart engellenir
+        // Can 0 ise NoLivesLeftPopup açılır ve restart engellenir
         if (!LifeManager.HasLives)
         {
-            Debug.LogWarning("<color=#e74c3c><b>[LevelFailPopup]</b> Can 0! OutOfLives popupı açılacak (restart engellendi).</color>");
             if (restartButton != null)
             {
                 restartButton.transform.DOShakePosition(0.35f, 10f, 14, 90f, false, true);
             }
+            NoLivesLeftPopup.Show();
             return;
         }
 
@@ -202,6 +208,12 @@ public class LevelFailPopup : PopupBase<LevelFailPopup>
         LifeManager.TryConsumeLife();
 
         SceneTransition.ReloadCurrentScene();
+    }
+
+    protected override void OnClosed()
+    {
+        base.OnClosed();
+        SoundManager.UnduckMusic(0.8f);
     }
 
     /// <summary>
