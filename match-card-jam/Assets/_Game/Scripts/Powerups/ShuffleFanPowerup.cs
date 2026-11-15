@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 
 /// <summary>
@@ -8,33 +9,34 @@ using UnityEngine;
 public class ShuffleFanPowerup : PowerupBase
 {
     [Header("Force Settings")]
-    [Tooltip("Minimum upward impulse applied to each MatchItem.")]
-    [SerializeField] private float _minUpwardImpulse = 7f;
+    [Tooltip("Minimum upward velocity change applied to each MatchItem (mass-independent).")]
+    [SerializeField] private float _minUpwardVelocity = 10f;
 
-    [Tooltip("Maximum upward impulse applied to each MatchItem.")]
-    [SerializeField] private float _maxUpwardImpulse = 11f;
+    [Tooltip("Maximum upward velocity change applied to each MatchItem (mass-independent).")]
+    [SerializeField] private float _maxUpwardVelocity = 15f;
 
-    [Tooltip("Horizontal scatter impulse strength.")]
-    [SerializeField] private float _horizontalImpulse = 3.5f;
+    [Tooltip("Horizontal scatter velocity change strength.")]
+    [SerializeField] private float _horizontalVelocity = 5f;
 
     [Tooltip("Gentle inward pull toward the board center so items stay within bounds.")]
-    [SerializeField] private float _centerPullStrength = 0.4f;
+    [SerializeField] private float _centerPullStrength = 0.45f;
 
-    [Tooltip("Random rotational torque impulse applied to tumble items in mid-air.")]
-    [SerializeField] private float _torqueStrength = 4f;
+    [Tooltip("Random rotational angular velocity applied to tumble items in mid-air.")]
+    [SerializeField] private float _torqueStrength = 8f;
 
     [Header("VFX & Audio")]
-    [Tooltip("Optional wind/tornado particle prefab spawned at the board center.")]
+    [Tooltip("Optional wind/tornado particle prefab spawned at the board center (preserves prefab rotation).")]
     [SerializeField] private GameObject _windEffectPrefab;
 
-    [Tooltip("Cooldown duration before another ShuffleFan can be triggered (uses PowerupDataSO.Duration if > 0).")]
-    [SerializeField] private float _fallbackDuration = 1.0f;
+    [Tooltip("Duration in seconds the VFX emits before gracefully stopping (uses PowerupDataSO.Duration if > 0).")]
+    [SerializeField] private float _fallbackDuration = 1.2f;
 
     [Tooltip("Sound effect played through SoundManager when activated.")]
     [SerializeField] private SoundType _shuffleSound = SoundType.PowerupShuffle;
 
     private readonly List<MatchItem> _targetItems = new();
     private LevelManager _levelManager;
+    private GameObject _spawnedVfx;
     private float _remainingDuration;
     private bool _isRunning;
 
@@ -63,18 +65,18 @@ public class ShuffleFanPowerup : PowerupBase
             Taptic.Medium();
         }
 
-        // 2. Compute board centroid so forces and optional VFX work regardless of level offset
+        // 2. Compute board centroid and spawn VFX preserving prefab rotation (e.g. X = -90)
         Vector3 boardCenter = ComputeBoardCenter(_targetItems);
 
         if (_windEffectPrefab != null)
         {
-            Instantiate(_windEffectPrefab, boardCenter, Quaternion.identity, transform);
+            _spawnedVfx = Instantiate(_windEffectPrefab, boardCenter, _windEffectPrefab.transform.rotation, transform);
         }
 
-        // 3. Apply upward + swirl + torque impulses
+        // 3. Apply upward + swirl + torque forces
         ApplyShuffleForces(boardCenter);
 
-        // 4. Short cooldown before Complete() so particles finish and rapid double-taps are prevented
+        // 4. Track emission duration (also acts as spam-click cooldown)
         _remainingDuration = Data != null && Data.Duration > 0f ? Data.Duration : _fallbackDuration;
         _isRunning = true;
     }
@@ -90,6 +92,7 @@ public class ShuffleFanPowerup : PowerupBase
             if (_levelManager.CurrentState != LevelManager.LevelState.Playing)
             {
                 _isRunning = false;
+                StopVfxGracefully();
                 Complete();
                 return;
             }
@@ -99,8 +102,58 @@ public class ShuffleFanPowerup : PowerupBase
         if (_remainingDuration <= 0f)
         {
             _isRunning = false;
+            FlattenTiltedItems();
+            StopVfxGracefully();
             Complete();
         }
+    }
+
+    private void FlattenTiltedItems()
+    {
+        for (int i = 0; i < _targetItems.Count; i++)
+        {
+            MatchItem item = _targetItems[i];
+            if (item == null || item.CurrentState != MatchItem.ItemState.InPhysics) continue;
+
+            // If an item landed on its thin edge or upside down after collisions, lay it flat.
+            if (Vector3.Dot(item.transform.up, Vector3.up) < 0.85f)
+            {
+                if (item.Rb != null)
+                {
+                    item.Rb.angularVelocity = Vector3.zero;
+                }
+
+                Vector3 euler = item.transform.eulerAngles;
+                item.transform.DORotate(new Vector3(0f, euler.y, 0f), 0.2f).SetEase(Ease.OutQuad);
+            }
+        }
+    }
+
+    private void StopVfxGracefully()
+    {
+        if (_spawnedVfx == null) return;
+
+        ParticleSystem[] systems = _spawnedVfx.GetComponentsInChildren<ParticleSystem>(true);
+        if (systems.Length == 0) return;
+
+        float maxRemainingLifetime = 0f;
+        for (int i = 0; i < systems.Length; i++)
+        {
+            ParticleSystem ps = systems[i];
+            if (ps == null) continue;
+
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            float lifetime = ps.main.startLifetime.constantMax;
+            if (lifetime > maxRemainingLifetime)
+            {
+                maxRemainingLifetime = lifetime;
+            }
+        }
+
+        // Detach VFX so existing particles finish fading out naturally after this power-up destroys itself.
+        _spawnedVfx.transform.SetParent(null, true);
+        Destroy(_spawnedVfx, Mathf.Max(0.5f, maxRemainingLifetime + 0.2f));
+        _spawnedVfx = null;
     }
 
     private void ApplyShuffleForces(Vector3 boardCenter)
@@ -118,18 +171,21 @@ public class ShuffleFanPowerup : PowerupBase
             if (vel.y < 0f) vel.y = 0f;
             rb.linearVelocity = vel;
 
-            float upForce = Random.Range(_minUpwardImpulse, _maxUpwardImpulse);
+            float upVel = Random.Range(_minUpwardVelocity, _maxUpwardVelocity);
             Vector2 randomDir2D = Random.insideUnitCircle.normalized;
-            Vector3 scatter = new Vector3(randomDir2D.x, 0f, randomDir2D.y) * Random.Range(0.3f, 1f) * _horizontalImpulse;
+            Vector3 scatter = new Vector3(randomDir2D.x, 0f, randomDir2D.y) * Random.Range(0.35f, 1f) * _horizontalVelocity;
 
             // Nudge outer items slightly inward toward boardCenter
             Vector3 toCenter = boardCenter - item.transform.position;
             toCenter.y = 0f;
             Vector3 inwardPull = toCenter * _centerPullStrength;
 
-            Vector3 totalImpulse = Vector3.up * upForce + scatter + inwardPull;
-            rb.AddForce(totalImpulse, ForceMode.Impulse);
-            rb.AddTorque(Random.insideUnitSphere * _torqueStrength, ForceMode.Impulse);
+            Vector3 totalVelocityChange = Vector3.up * upVel + scatter + inwardPull;
+            rb.AddForce(totalVelocityChange, ForceMode.VelocityChange);
+
+            // Spin around Y axis only so flat cards do not flip upside down or balance on their thin edges
+            float yawSpin = Random.Range(-_torqueStrength, _torqueStrength);
+            rb.AddTorque(Vector3.up * yawSpin, ForceMode.VelocityChange);
         }
     }
 

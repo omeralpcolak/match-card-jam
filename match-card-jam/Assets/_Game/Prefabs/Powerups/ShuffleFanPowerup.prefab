@@ -44,11 +44,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5423f6edc622b4fc19fb73ebd03f3f59, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShuffleFanPowerup
-  _minUpwardImpulse: 20
-  _maxUpwardImpulse: 30
-  _horizontalImpulse: 5
+  _minUpwardVelocity: 7
+  _maxUpwardVelocity: 12
+  _horizontalVelocity: 3
   _centerPullStrength: 2
-  _torqueStrength: 10
-  _windEffectPrefab: {fileID: 0}
-  _fallbackDuration: 2
+  _torqueStrength: 7
+  _windEffectPrefab: {fileID: 185918, guid: e83fb83871ed1ac4d978b22b0f2a4d71, type: 3}
+  _fallbackDuration: 1
   _shuffleSound: 7

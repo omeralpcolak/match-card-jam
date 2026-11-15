@@ -18,5 +18,5 @@ MonoBehaviour:
   unlockLevel: 20
   defaultAmount: 3
   coinCost: 1000
-  duration: 5
-  _powerupPrefab: {fileID: 0}
+  duration: 1.5
+  _powerupPrefab: {fileID: 5152730362767184124, guid: fabe274eed64b4024b8cf0adfffd32e2, type: 3}
