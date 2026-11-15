@@ -3,19 +3,19 @@ using DG.Tweening;
 using UnityEngine;
 
 /// <summary>
-/// Dock içerisindeki tek bir yuvayı (kutucuğu) temsil eder.
-/// MatchItem, MatchItemRoot transform referansına parent'lanır ve local pozisyonuna tween ile oturur.
+/// Represents a single slot inside the Dock.
+/// MatchItem is parented to the MatchItemRoot transform and smoothly tweens to its local position.
 /// </summary>
 public class DockSlot : MonoBehaviour
 {
     [Header("Slot Identity & References")]
     [SerializeField] private int slotIndex;
 
-    [Tooltip("MatchItem'ın parent yapılacağı child transform. Boş bırakılırsa bu transform kullanılır.")]
+    [Tooltip("Child transform to parent the MatchItem to. If empty, uses this transform.")]
     [SerializeField] private Transform matchItemRoot;
 
     [Header("Flight Animation Details")]
-    [Tooltip("Dock'a yerleşirken kartın alacağı hedef scale değeri.")]
+    [Tooltip("Target scale for the card when seated in the dock.")]
     [SerializeField] private Vector3 targetScale = new Vector3(0.75f, 0.75f, 0.75f);
 
     private MatchItem currentItem;
@@ -31,26 +31,26 @@ public class DockSlot : MonoBehaviour
     public bool IsEmpty => currentItem == null;
 
     /// <summary>
-    /// Yeni gelen kartı MatchItemRoot'a parent yapar ve zıplayarak yerleşmesini sağlar.
+    /// Parents the incoming item to MatchItemRoot and animates placement with a jump tween.
     /// </summary>
     public void PlaceItemWithJump(MatchItem item, float duration, float jumpPower, Ease ease, Action onComplete = null)
     {
         currentItem = item;
 
-        // Kartı slotun MatchItemRoot referansına parent yap
+        // Parent card to the slot's MatchItemRoot reference
         Transform targetParent = MatchItemRoot;
         item.transform.SetParent(targetParent, true);
         item.transform.DOKill();
 
         Sequence seq = DOTween.Sequence();
 
-        // 1. Local merkeze zıplama
+        // 1. Jump to local center
         seq.Join(item.transform.DOLocalJump(Vector3.zero, jumpPower, 1, duration).SetEase(ease));
 
-        // 2. Rotasyonu sıfıra yumuşakça hizalama
+        // 2. Smoothly align rotation to zero
         seq.Join(item.transform.DOLocalRotate(Vector3.zero, duration).SetEase(ease));
 
-        // 3. Boyut ölçekleme (0.75f)
+        // 3. Scale to target size
         seq.Join(item.transform.DOScale(targetScale, duration).SetEase(ease));
 
         seq.OnComplete(() =>
@@ -67,7 +67,7 @@ public class DockSlot : MonoBehaviour
     }
 
     /// <summary>
-    /// Araya yeni bir kart girdiğinde veya boşluklar kapandığında mevcut kartın yeni slota yumuşakça kayması.
+    /// Smoothly slides an existing card into this new slot when items shift or gaps close.
     /// </summary>
     public void SlideItemToHere(MatchItem item, float duration, Ease ease = Ease.OutQuad, Action onComplete = null)
     {
@@ -89,7 +89,7 @@ public class DockSlot : MonoBehaviour
     }
 
     /// <summary>
-    /// Slottaki eşleşmiş veya kaldırılmış kartı serbest bırakır.
+    /// Clears and releases the matched or removed card from this slot.
     /// </summary>
     public void Clear()
     {

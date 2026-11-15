@@ -3,17 +3,17 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// MatchItem için Outline görselini ve tıklama animasyonunu yöneten bileşen.
-/// Outline GameObject'i Hierarchy'de hazır olarak bulunur.
-/// Yaşam döngüsü MatchItem tarafından kontrol edilir.
+/// Manages outline visuals and click feedback animations for MatchItem.
+/// The Outline GameObject exists directly in the prefab hierarchy.
+/// Lifecycle is controlled by MatchItem.
 /// </summary>
 public class MatchItemOutline : MonoBehaviour
 {
     [Header("Mesh & Renderers")]
-    [Tooltip("Kartın ana MeshRenderer'ı. Boş bırakılırsa bu obje veya child'larda aranır.")]
+    [Tooltip("Main MeshRenderer of the card. If unassigned, searched in this object or children.")]
     [SerializeField] private MeshRenderer mainMeshRenderer;
 
-    [Tooltip("Hierarchy'deki Outline GameObject'i üzerindeki MeshRenderer. Boşsa 'OutlineMesh' adıyla child'larda aranır.")]
+    [Tooltip("MeshRenderer on Outline GameObject in hierarchy. If null, searched as child named 'OutlineMesh'.")]
     [SerializeField] private MeshRenderer outlineRenderer;
 
     [Header("Colors & Animation")]
@@ -30,7 +30,7 @@ public class MatchItemOutline : MonoBehaviour
     public MeshRenderer OutlineRenderer => outlineRenderer;
 
     /// <summary>
-    /// MatchItem tarafından çağrılır.
+    /// Called by MatchItem.
     /// </summary>
     public void Initialize(MeshRenderer mainRenderer = null)
     {
@@ -54,13 +54,13 @@ public class MatchItemOutline : MonoBehaviour
     }
 
     /// <summary>
-    /// Hierarchy'de var olan OutlineMesh renderer'ını bulur ve bağlar.
+    /// Locates and binds the existing OutlineMesh renderer in the hierarchy.
     /// </summary>
     public void BindOutlineRenderer()
     {
         if (outlineRenderer != null) return;
 
-        // 1. Önce doğrudan child objelerde "OutlineMesh" adını ara
+        // 1. Search directly in child objects for 'OutlineMesh'
         Transform outlineTransform = transform.Find("OutlineMesh");
         if (outlineTransform == null && mainMeshRenderer != null)
         {
@@ -73,7 +73,7 @@ public class MatchItemOutline : MonoBehaviour
             return;
         }
 
-        // 2. Bulunamadıysa çocuklardaki diğer MeshRenderer'ı outline kabul et
+        // 2. If not found by name, pick the secondary MeshRenderer among children as outline
         MeshRenderer[] renderers = GetComponentsInChildren<MeshRenderer>(true);
         foreach (var r in renderers)
         {

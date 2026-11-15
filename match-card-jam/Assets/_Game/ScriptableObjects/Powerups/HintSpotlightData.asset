@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c598c4046c5a4c0f9bd45ca9d92ccef, type: 3}
+  m_Name: HintSpotlightData
+  m_EditorClassIdentifier: Assembly-CSharp::PowerupDataSO
+  powerupType: 1
+  displayName: 
+  icon: {fileID: 21300000, guid: 8febf244ecbe244f888930c1c190065f, type: 3}
+  unlockLevel: 15
+  defaultAmount: 3
+  coinCost: 1000
+  duration: 5
+  _powerupPrefab: {fileID: 7494182505637397139, guid: 8975b2b7f72284492988987f8c50ea58, type: 3}

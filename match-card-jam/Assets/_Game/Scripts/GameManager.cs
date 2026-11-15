@@ -2,36 +2,40 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// Game sahnesinin ana yöneticisi.
-/// Sahne düzeyindeki servisleri (InputManager, ProgressionUIManager) barındırır,
-/// LevelManager'ı başlatır ve seviyenin sonuçlarını doğrudan callback (delegation) ile dinler.
-/// Statik event veya OnEnable/OnDisable aboneliği içermez.
+/// Primary manager for the Game scene.
+/// Hosts scene-level services (InputManager, ProgressionUIManager),
+/// initializes LevelManager, and listens to level outcomes via direct callbacks (delegation).
+/// Contains no static event subscriptions or OnEnable/OnDisable couplings.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
     [Header("Scene Subsystems")]
-    [Tooltip("Input yöneticisi. Boşsa alt objelerde veya sahnede aranır.")]
+    [Tooltip("Input manager reference. If empty, searched in children or scene.")]
     [SerializeField] private InputManager inputManager;
 
-    [Tooltip("Progression UI yöneticisi. Boşsa alt objelerde veya sahnede aranır.")]
+    [Tooltip("Progression UI manager reference. If empty, searched in children or scene.")]
     [SerializeField] private ProgressionUIManager progressionUIManager;
 
-    [Tooltip("Timer UI yöneticisi. Boşsa alt objelerde veya sahnede aranır.")]
+    [Tooltip("Timer UI manager reference. If empty, searched in children or scene.")]
     [SerializeField] private TimerUIManager timerUIManager;
+
+    [Tooltip("Powerup manager reference. If empty, searched in children or scene.")]
+    [SerializeField] private PowerupManager powerupManager;
 
     [Header("Level Progression")]
     [Tooltip("Database holding all level prefabs.")]
     [SerializeField] private LevelDatabase levelDatabase;
 
     [Header("Active Level")]
-    [Tooltip("Şu anki aktif seviye yöneticisi. Boşsa sahnede aranır veya LevelDatabase'den yaratılır.")]
+    [Tooltip("Currently active level manager. If empty, searched in scene or instantiated from LevelDatabase.")]
     [SerializeField] private LevelManager currentLevelManager;
 
     public InputManager InputManager => inputManager;
     public ProgressionUIManager ProgressionUIManager => progressionUIManager;
     public TimerUIManager TimerUIManager => timerUIManager;
+    public PowerupManager PowerupManager => powerupManager;
     public LevelManager CurrentLevelManager => currentLevelManager;
 
     private void Awake()
@@ -51,6 +55,7 @@ public class GameManager : MonoBehaviour
     {
         SoundManager.PlayMusic(MusicType.Gameplay, fadeDuration: 1.5f);
         InitializeActiveLevel();
+        powerupManager?.Initialize();
     }
 
     private void OnDestroy()
@@ -90,6 +95,15 @@ public class GameManager : MonoBehaviour
             if (timerUIManager == null)
             {
                 timerUIManager = FindFirstObjectByType<TimerUIManager>(FindObjectsInactive.Include);
+            }
+        }
+
+        if (powerupManager == null)
+        {
+            powerupManager = GetComponentInChildren<PowerupManager>(true);
+            if (powerupManager == null)
+            {
+                powerupManager = FindFirstObjectByType<PowerupManager>(FindObjectsInactive.Include);
             }
         }
     }

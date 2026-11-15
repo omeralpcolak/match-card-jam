@@ -100,6 +100,8 @@ public class SoundManager : MonoBehaviour
         instance = this;
         DontDestroyOnLoad(gameObject);
 
+        Taptic.tapticOn = GameData.IsHapticEnabled;
+
         BuildLookups();
         InitializeAudioSources();
         SubscribeToEvents();
@@ -168,19 +170,28 @@ public class SoundManager : MonoBehaviour
     {
         SettingsPopup.OnSoundToggled += HandleSoundToggled;
         SettingsPopup.OnMusicToggled += HandleMusicToggled;
+        SettingsPopup.OnHapticToggled += HandleHapticToggled;
         SettingsMainMenuPopup.OnSoundToggled += HandleSoundToggled;
         SettingsMainMenuPopup.OnMusicToggled += HandleMusicToggled;
+        SettingsMainMenuPopup.OnHapticToggled += HandleHapticToggled;
     }
 
     private void UnsubscribeFromEvents()
     {
         SettingsPopup.OnSoundToggled -= HandleSoundToggled;
         SettingsPopup.OnMusicToggled -= HandleMusicToggled;
+        SettingsPopup.OnHapticToggled -= HandleHapticToggled;
         SettingsMainMenuPopup.OnSoundToggled -= HandleSoundToggled;
         SettingsMainMenuPopup.OnMusicToggled -= HandleMusicToggled;
+        SettingsMainMenuPopup.OnHapticToggled -= HandleHapticToggled;
     }
 
     #region Settings Change Handlers
+
+    private void HandleHapticToggled(bool isEnabled)
+    {
+        Taptic.tapticOn = isEnabled;
+    }
 
     private void HandleSoundToggled(bool isEnabled)
     {
@@ -416,11 +427,13 @@ public class SoundManager : MonoBehaviour
     #region Automated Button Click Registration
 
     /// <summary>
-    /// Plays the standard UI button click sound.
+    /// Plays the standard UI button click sound and haptic feedback.
     /// Call this inside UI button onClick callbacks.
     /// </summary>
     public static void PlayButtonSound()
     {
+        Taptic.Light();
+
         if (Time.unscaledTime - Instance.lastButtonClickTime < BUTTON_CLICK_COOLDOWN)
         {
             return;
@@ -451,6 +464,18 @@ public class SoundManager : MonoBehaviour
             soundConfigs.Add(new SoundConfig { soundType = SoundType.ButtonClick, clip = btnClip, volume = 1f, minPitch = 0.98f, maxPitch = 1.02f });
             soundConfigs.Add(new SoundConfig { soundType = SoundType.LevelComplete, clip = winClip, volume = 1f, minPitch = 1f, maxPitch = 1f });
             soundConfigs.Add(new SoundConfig { soundType = SoundType.LevelFail, clip = failClip, volume = 1f, minPitch = 1f, maxPitch = 1f });
+
+            AudioClip selectClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Game/Audios/Sounds/card_select_sound.wav");
+            if (selectClip != null)
+            {
+                soundConfigs.Add(new SoundConfig { soundType = SoundType.CardSelect, clip = selectClip, volume = 1f, minPitch = 0.98f, maxPitch = 1.02f });
+            }
+
+            AudioClip mergeClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Game/Audios/Sounds/merge_sound.mp3");
+            if (mergeClip != null)
+            {
+                soundConfigs.Add(new SoundConfig { soundType = SoundType.CardMatch, clip = mergeClip, volume = 1f, minPitch = 0.98f, maxPitch = 1.02f });
+            }
         }
 
         if (musicConfigs == null) musicConfigs = new List<MusicConfig>();

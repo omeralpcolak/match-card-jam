@@ -3,38 +3,42 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// Seviye süre barını (TimerBar) ve süre metnini (TimeTxt) yöneten UI sınıfı.
-/// Seviyede süre yoksa tüm barı kapatır (SetActive(false)), süre varsa 00:30 formatında günceller.
-/// Süre belirlenen eşiğin (varsayılan 10 saniye) altına düştüğünde uyarı rengine geçer ve kalp atışı efekti oynatır.
+/// Manages the level countdown bar (TimerBar) and timer text (TimeTxt).
+/// Hides the bar (SetActive(false)) if level has no timer, formats as 00:30 if timer enabled.
+/// Transitions to warning color and plays a pulse heartbeat effect when time falls below threshold.
 /// </summary>
 public class TimerUIManager : MonoBehaviour
 {
     [Header("UI References")]
-    [Tooltip("Açılıp kapatılacak ana bar objesi (Boşsa bu scriptin takılı olduğu GameObject kullanılır).")]
+    [Tooltip("Main root object for timer bar (if unassigned, uses this GameObject).")]
     [SerializeField] private GameObject timerBarRoot;
 
-    [Tooltip("Sürenin yazılacağı TextMeshProUGUI bileşeni.")]
+    [Tooltip("TextMeshProUGUI component displaying remaining time.")]
     [SerializeField] private TextMeshProUGUI timeTxt;
 
     [Header("Format Settings")]
-    [Tooltip("Süre gösterim formatı (Örn: {0:00}:{1:00} -> 00:30).")]
+    [Tooltip("Timer display format (e.g. {0:00}:{1:00} -> 00:30).")]
     [SerializeField] private string timeFormat = "{0:00}:{1:00}";
 
     [Header("Warning Effect (Under Threshold)")]
-    [Tooltip("Efektin devreye gireceği kalan saniye eşiği.")]
+    [Tooltip("Remaining seconds threshold to trigger warning effect.")]
     [SerializeField] private float warningThreshold = 10f;
 
-    [Tooltip("Uyarı anında metnin alacağı renk (Kırmızı).")]
+    [Tooltip("Text color when warning is active (Red).")]
     [SerializeField] private Color warningColor = new Color(0.96f, 0.26f, 0.21f, 1f);
 
-    [Tooltip("Her saniyede kalp atışı / zıplama efekti olsun mu?")]
+    [Tooltip("Whether to trigger a pulse / heartbeat effect on each second tick.")]
     [SerializeField] private bool usePulseEffect = true;
 
-    [Tooltip("Zıplama büyüklüğü.")]
+    [Tooltip("Pulse scale intensity.")]
     [SerializeField] private float pulseScale = 0.25f;
 
-    [Tooltip("Zıplama süresi.")]
+    [Tooltip("Pulse duration.")]
     [SerializeField] private float pulseDuration = 0.3f;
+
+    [Header("Frozen Effect")]
+    [Tooltip("Text color when the timer is frozen by FreezeTime power-up.")]
+    [SerializeField] private Color frozenColor = new Color(0.35f, 0.85f, 1f, 1f);
 
     private int lastDisplayedSeconds = -1;
     private Color originalColor;
@@ -42,6 +46,7 @@ public class TimerUIManager : MonoBehaviour
     private Tween pulseTween;
     private Tween colorTween;
     private bool isWarningActive;
+    private bool isFrozen;
 
     private void Awake()
     {
@@ -54,8 +59,8 @@ public class TimerUIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// LevelManager tarafından seviye başlarken çağrılır.
-    /// Süre yoksa barı gizler, süre varsa açıp başlangıç değerini yazar.
+    /// Called by LevelManager at level start.
+    /// Hides bar if timer disabled, otherwise enables bar and sets initial value.
     /// </summary>
     public void Initialize(bool useTimer, float initialTime)
     {
@@ -74,8 +79,8 @@ public class TimerUIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Süre metnini dakika:saniye (00:30) olarak günceller.
-    /// Süre 10 saniyenin altına indiğinde uyarı rengine döner ve her saniye kalp atışı gibi atar.
+    /// Updates timer text as mm:ss (00:30).
+    /// Turns red and pulses like a heartbeat every second when under threshold.
     /// </summary>
     public void UpdateTimer(float remainingSeconds)
     {
@@ -90,7 +95,7 @@ public class TimerUIManager : MonoBehaviour
 
         timeTxt.text = string.Format(timeFormat, minutes, seconds);
 
-        // 10 saniyenin altına indiğinde efekt kontrolü
+        // Warning effect check when below threshold
         if (totalSeconds <= warningThreshold && totalSeconds > 0)
         {
             ApplyWarningTick();
@@ -103,7 +108,7 @@ public class TimerUIManager : MonoBehaviour
 
     private void ApplyWarningTick()
     {
-        // Rengi kırmızıya çevir
+        // Switch color to warning color
         if (!isWarningActive)
         {
             isWarningActive = true;
@@ -111,7 +116,7 @@ public class TimerUIManager : MonoBehaviour
             colorTween = timeTxt.DOColor(warningColor, 0.2f);
         }
 
-        // Her saniye kalp atışı / zıplama efekti
+        // Heartbeat / pulse punch scale effect every second
         if (usePulseEffect)
         {
             pulseTween?.Kill();
@@ -162,12 +167,42 @@ public class TimerUIManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Updates visual state when timer is frozen/unfrozen by FreezeTime power-up.
+    /// </summary>
+    public void SetFrozen(bool frozen)
+    {
+        isFrozen = frozen;
+        if (timeTxt == null) return;
+
+        colorTween?.Kill();
+
+        if (isFrozen)
+        {
+            pulseTween?.Kill();
+            if (originalScale != Vector3.zero)
+            {
+                timeTxt.transform.localScale = originalScale;
+            }
+            colorTween = timeTxt.DOColor(frozenColor, 0.2f);
+        }
+        else
+        {
+            Color targetColor = isWarningActive ? warningColor : originalColor;
+            if (targetColor != default)
+            {
+                colorTween = timeTxt.DOColor(targetColor, 0.2f);
+            }
+        }
+    }
+
     public void ResetVisuals()
     {
         pulseTween?.Kill();
         colorTween?.Kill();
 
         isWarningActive = false;
+        isFrozen = false;
 
         if (timeTxt != null)
         {

@@ -9,7 +9,13 @@ public enum SoundType
     LevelComplete = 1,
     LevelFail = 2,
     CardClick = 3,
-    CardMatch = 4
+    CardSelect = 3,
+    CardMatch = 4,
+    PowerupFreeze = 5,
+    PowerupHint = 6,
+    PowerupShuffle = 7,
+    PowerupMagnet = 8,
+    PowerupClearDock = 9
 }
 
 /// <summary>

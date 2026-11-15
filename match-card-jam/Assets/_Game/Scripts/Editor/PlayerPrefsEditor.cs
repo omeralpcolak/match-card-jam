@@ -64,6 +64,9 @@ public class PlayerPrefsEditor : EditorWindow
         DrawGameShortcutsSection();
         EditorGUILayout.Space(12);
 
+        DrawPowerupsSection();
+        EditorGUILayout.Space(12);
+
         DrawGenericKeysSection();
         EditorGUILayout.Space(12);
 
@@ -212,6 +215,42 @@ public class PlayerPrefsEditor : EditorWindow
         if (newHaptic != haptic) SetInt(KEY_HAPTIC, newHaptic ? 1 : 0);
 
         EditorGUILayout.EndHorizontal();
+
+        EditorGUILayout.EndVertical();
+    }
+
+    private void DrawPowerupsSection()
+    {
+        GUILayout.Label("✨ Powerups", EditorStyles.boldLabel);
+        EditorGUILayout.BeginVertical("box");
+
+        foreach (PowerupType type in Enum.GetValues(typeof(PowerupType)))
+        {
+            int count = GameData.GetPowerupCount(type);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField(type.ToString(), GUILayout.Width(110));
+
+            int newCount = EditorGUILayout.IntField(count, GUILayout.Width(60));
+            if (newCount != count)
+            {
+                GameData.SetPowerupCount(type, newCount);
+            }
+
+            if (GUILayout.Button("Reset (0)", EditorStyles.miniButtonLeft))
+            {
+                GameData.SetPowerupCount(type, 0);
+            }
+            if (GUILayout.Button("+1", EditorStyles.miniButtonMid))
+            {
+                GameData.AddPowerup(type, 1);
+            }
+            if (GUILayout.Button("+5", EditorStyles.miniButtonRight))
+            {
+                GameData.AddPowerup(type, 5);
+            }
+
+            EditorGUILayout.EndHorizontal();
+        }
 
         EditorGUILayout.EndVertical();
     }
@@ -442,6 +481,11 @@ public class PlayerPrefsEditor : EditorWindow
         AddKeyIfMissing(KEY_SOUND);
         AddKeyIfMissing(KEY_MUSIC);
         AddKeyIfMissing(KEY_HAPTIC);
+
+        foreach (PowerupType type in Enum.GetValues(typeof(PowerupType)))
+        {
+            AddKeyIfMissing($"{GameData.KEY_POWERUP_PREFIX}{type}");
+        }
     }
 
     private void AddKeyIfMissing(string key)

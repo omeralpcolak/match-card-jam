@@ -11,12 +11,12 @@ public class InputManager : MonoBehaviour
         : _fallbackInstance;
 
     /// <summary>
-    /// Bir MatchItem onaylanıp dock'a gönderilmek üzere toplandığında fırlar.
+    /// Fired when a MatchItem is confirmed and picked to be sent to the dock.
     /// </summary>
     public static event Action<MatchItem> OnItemPicked;
 
     /// <summary>
-    /// Bir MatchItem'ın üzerine parmakla gelindiğinde/seçildiğinde fırlar.
+    /// Fired when hovering/selecting over a MatchItem.
     /// </summary>
     public static event Action<MatchItem> OnItemHighlighted;
 
@@ -27,7 +27,7 @@ public class InputManager : MonoBehaviour
     [SerializeField] private bool blockRaycastOverUI = true;
 
     [Header("Drag & Selection Settings")]
-    [Tooltip("Parmağı kartlardan boş bir alana kaydırınca mevcut seçimi iptal etsin mi?")]
+    [Tooltip("Whether moving finger away from cards to an empty area cancels current selection.")]
     [SerializeField] private bool cancelSelectionOnDragAway = false;
 
     private MatchItem currentlySelectedItem;
@@ -46,7 +46,7 @@ public class InputManager : MonoBehaviour
     }
 
     /// <summary>
-    /// LevelManager tarafından açık sırayla çağrılır.
+    /// Explicitly initialized by LevelManager in sequence.
     /// </summary>
     public void Initialize()
     {
@@ -65,7 +65,7 @@ public class InputManager : MonoBehaviour
 
     private void HandlePointerInput()
     {
-        // Seviye aktif oynanmıyorsa (Won, Lost veya Paused ise) girdi alımını durdur
+        // Stop receiving input if level is not actively playing (Won, Lost, or Paused)
         if (LevelManager.Instance != null && LevelManager.Instance.CurrentState != LevelManager.LevelState.Playing)
         {
             if (currentlySelectedItem != null)
@@ -83,7 +83,7 @@ public class InputManager : MonoBehaviour
         bool isPressed = pointer.press.isPressed;
         bool wasReleased = pointer.press.wasReleasedThisFrame;
 
-        // UI üzerine tıklandığında oyun içi etkileşimi engelle
+        // Prevent in-game interaction when clicking over UI
         if (blockRaycastOverUI && EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
         {
             if (wasReleased)
@@ -94,21 +94,21 @@ public class InputManager : MonoBehaviour
             return;
         }
 
-        // 1. FAZ: Dokunma/Basış Başlangıcı (Pointer Down)
+        // PHASE 1: Pointer Down
         if (wasPressed)
         {
             isPointerActive = true;
             TrySelectAt(screenPos);
         }
 
-        // 2. FAZ: Parmak Basılıyken Gezinme (Pointer Drag / Hold)
+        // PHASE 2: Pointer Drag / Hold
         if (isPressed)
         {
             isPointerActive = true;
             TrySelectAt(screenPos);
         }
 
-        // 3. FAZ: Dokunma Bitişi (Pointer Up)
+        // PHASE 3: Pointer Up / Release
         if (wasReleased)
         {
             if (currentlySelectedItem != null)
@@ -130,11 +130,11 @@ public class InputManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Belirtilen ekran pozisyonundaki MatchItem'ı bulur ve seçili hale getirir.
+    /// Queries MatchItem at screen position and selects it.
     /// </summary>
     private void TrySelectAt(Vector2 screenPos)
     {
-        // Dock doluysa yeni kart seçilmesine izin verme
+        // Do not allow selecting new cards if dock is full
         if (DockManager.Instance != null && !DockManager.Instance.HasEmptySlot)
         {
             return;
@@ -163,7 +163,7 @@ public class InputManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Raycast ile ekrandaki objeyi sorgular.
+    /// Raycasts for MatchItem at screen position.
     /// </summary>
     private MatchItem GetItemAt(Vector2 screenPos)
     {
@@ -180,22 +180,31 @@ public class InputManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Seçilen objeyi kesinleştirir, geri bildirimi oynatır ve dock event'ini fırlatır.
+    /// Confirms picked item, plays feedback, and triggers dock event.
     /// </summary>
     private void ConfirmPick(MatchItem item)
     {
         if (item == null) return;
 
-        // Dock doluysa toplamayı iptal et
+        // Cancel pickup if dock is full
         if (DockManager.Instance != null && !DockManager.Instance.HasEmptySlot)
         {
             item.Deselect();
             return;
         }
 
-        // Hemen Flying state'e alarak ardışık tıklamalarda tekrar seçilmesini önle
+        // Trigger haptic if not already triggered during Select()
+        if (item.CurrentState != MatchItem.ItemState.Selected)
+        {
+            Taptic.Light();
+        }
+
+        // Immediately switch to Flying state to prevent repeated clicks
         item.SetState(MatchItem.ItemState.Flying);
         item.PlayClickFeedback();
+
+        // Play sound as card begins flying towards dock
+        SoundManager.PlaySound(SoundType.CardSelect);
 
         OnItemPicked?.Invoke(item);
     }

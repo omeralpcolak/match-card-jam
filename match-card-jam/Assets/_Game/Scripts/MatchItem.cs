@@ -23,7 +23,7 @@ public class MatchItem : MonoBehaviour
     [SerializeField] private Collider itemCollider;
 
     [Header("Physics Settings")]
-    [Tooltip("Kart masadan alındığında etrafındaki uyuyan diğer kartları uyandırma yarıçapı.")]
+    [Tooltip("Radius around the card to wake up sleeping rigidbodies when picked from the table.")]
     [SerializeField] private float physicsWakeRadius = 2.5f;
 
     private ItemState currentState = ItemState.InPhysics;
@@ -39,7 +39,7 @@ public class MatchItem : MonoBehaviour
 
     private void Awake()
     {
-        // LevelManager tarafından önceden çağrılmadıysa tekil testler için fallback
+        // Fallback for isolated testing if not explicitly initialized by LevelManager
         if (!isInitialized)
         {
             Initialize();
@@ -47,13 +47,13 @@ public class MatchItem : MonoBehaviour
     }
 
     /// <summary>
-    /// LevelManager tarafından açıkça çağrılır; fizik, collider ve outline kurulumunu tamamlar.
+    /// Explicitly called by LevelManager; sets up physics, collider, and outline.
     /// </summary>
     public void Initialize()
     {
         if (isInitialized) return;
 
-        // 1. Fizik ve Collider bileşenlerini bağla
+        // 1. Bind physics and collider components
         if (rb == null) rb = GetComponent<Rigidbody>() ?? GetComponentInChildren<Rigidbody>();
 
         if (itemCollider == null)
@@ -69,7 +69,7 @@ public class MatchItem : MonoBehaviour
             }
         }
 
-        // 2. Outline bileşenini bul ve initialize et
+        // 2. Locate and initialize outline component
         InitOutline();
 
         isInitialized = true;
@@ -99,6 +99,8 @@ public class MatchItem : MonoBehaviour
         {
             outline.SetHighlighted(true);
         }
+
+        Taptic.Light();
     }
 
     public void Deselect()
@@ -132,7 +134,7 @@ public class MatchItem : MonoBehaviour
         {
             Vector3 pickPosition = transform.position;
 
-            // Dock veya uçuş aşamasında raycast ve fizik etkileşimini kapat
+            // Disable raycast and physics collision during flight or dock phase
             if (itemCollider != null)
             {
                 itemCollider.enabled = false;
@@ -148,7 +150,7 @@ public class MatchItem : MonoBehaviour
                 rb.isKinematic = true;
             }
 
-            // Kart altından çekildiğinde üzerinde duran 'uyuyan' (Sleeping) diğer kartları uyandır
+            // Wake up resting rigidbodies lying on or touching this card
             WakeNearbyRigidbodies(pickPosition, physicsWakeRadius);
         }
         else if (newState == ItemState.InPhysics)
@@ -170,8 +172,8 @@ public class MatchItem : MonoBehaviour
     }
 
     /// <summary>
-    /// Bir kart masadan çekildiğinde, onun üstünde duran veya temas halindeki uyuyan
-    /// diğer Rigidbody'leri uyandırarak yerçekimiyle masaya düşmelerini sağlar.
+    /// When a card is picked from the table, wakes up any sleeping rigidbodies resting
+    /// on top of or in contact with it so they fall naturally with gravity.
     /// </summary>
     private void WakeNearbyRigidbodies(Vector3 center, float radius)
     {

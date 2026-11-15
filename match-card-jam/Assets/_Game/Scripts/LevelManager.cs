@@ -7,8 +7,8 @@ using UnityEditor;
 #endif
 
 /// <summary>
-/// Oyun seviyesinin yönetimini, alt sistemlerin (DockManager, InputManager) başlatılmasını,
-/// MatchItemRoot altındaki nesnelerin taranmasını ve Kazanma / Kaybetme (Win / Lose) koşullarını yöneten ana yönetici.
+/// Manages level lifecycle, initializes subsystems (DockManager, InputManager),
+/// scans objects under MatchItemRoot, and manages Win / Lose conditions.
 /// </summary>
 public class LevelManager : MonoBehaviour
 {
@@ -29,40 +29,41 @@ public class LevelManager : MonoBehaviour
     public static LevelManager Instance { get; private set; }
 
     [Header("Board References")]
-    [Tooltip("Tüm MatchItem nesnelerinin altında toplandığı ana Transform. Boşsa sahnede 'MatchItemRoot' aranır.")]
+    [Tooltip("Main Transform holding all MatchItem objects. If empty, searches scene for 'MatchItemRoot'.")]
     [SerializeField] private Transform matchItemRoot;
 
-    [Tooltip("MatchItemRoot altından taranan nesnelerin listesi.")]
+    [Tooltip("List of MatchItem objects scanned under MatchItemRoot.")]
     [SerializeField] private List<MatchItem> boardItems = new();
 
     [Header("Subsystem References")]
-    [Tooltip("Dock yöneticisi. Boşsa sahnede otomatik aranır.")]
+    [Tooltip("Dock manager reference. If null, automatically located in scene.")]
     [SerializeField] private DockManager dockManager;
 
-    [Tooltip("Input yöneticisi. Boşsa sahnede otomatik aranır.")]
+    [Tooltip("Input manager reference. If null, automatically located in scene.")]
     [SerializeField] private InputManager inputManager;
 
-    [Tooltip("Progression UI yöneticisi. Boşsa sahnede otomatik aranır.")]
+    [Tooltip("Progression UI manager reference. If null, automatically located in scene.")]
     [SerializeField] private ProgressionUIManager progressionUIManager;
 
-    [Tooltip("Timer UI yöneticisi. Boşsa sahnede otomatik aranır.")]
+    [Tooltip("Timer UI manager reference. If null, automatically located in scene.")]
     [SerializeField] private TimerUIManager timerUIManager;
 
     [Header("Timer Settings")]
-    [Tooltip("Süre sınırı olsun mu?")]
+    [Tooltip("Whether this level has a time limit.")]
     [SerializeField] private bool useTimer = false;
 
-    [Tooltip("Saniye cinsinden seviye süresi.")]
+    [Tooltip("Level duration in seconds.")]
     [SerializeField] private float timeLimit = 120f;
 
-    // Durum ve Takip Değişkenleri
+    // State and Tracking Variables
     private LevelState currentState = LevelState.Playing;
     private int totalItemCount;
     private int remainingItemCount;
     private float currentTimer;
+    private bool isTimerFrozen;
     private bool isInitialized;
 
-    // GameManager veya dış sistemlerin doğrudan dinlemesi için callback'ler (Statik event yerine)
+    // Direct callbacks for GameManager or external systems (instead of static events)
     private Action onLevelWonCallback;
     private Action<LoseReason> onLevelLostCallback;
 
@@ -77,11 +78,12 @@ public class LevelManager : MonoBehaviour
     public int RemainingItemCount => remainingItemCount;
     public float CurrentTimer => currentTimer;
     public bool UseTimer => useTimer;
+    public bool IsTimerFrozen => isTimerFrozen;
 
-    // Dış Sistemler İçin Olaylar (UI, Ses, Efekt vb.)
+    // Events for external systems (UI, Audio, VFX, etc.)
     public static event Action<LevelState> OnStateChanged;
-    public static event Action<int, int> OnItemCountChanged; // (Kalan, Toplam)
-    public static event Action<float> OnTimerTick;           // Kalan saniye
+    public static event Action<int, int> OnItemCountChanged; // (Remaining, Total)
+    public static event Action<float> OnTimerTick;           // Remaining seconds
     public static event Action OnLevelWon;
     public static event Action<LoseReason> OnLevelLost;
 
@@ -97,7 +99,7 @@ public class LevelManager : MonoBehaviour
 
     private void Start()
     {
-        // GameManager sahnede yoksa (izole test modu), kendi kendini başlat
+        // If GameManager is not present in scene (isolated test mode), self-initialize
         if (!isInitialized && GameManager.Instance == null)
         {
             InitializeLevel();
@@ -126,8 +128,8 @@ public class LevelManager : MonoBehaviour
     {
         if (currentState != LevelState.Playing) return;
 
-        // Süre Takibi
-        if (useTimer)
+        // Timer tracking
+        if (useTimer && !isTimerFrozen)
         {
             currentTimer -= Time.deltaTime;
             timerUIManager?.UpdateTimer(currentTimer);
@@ -143,8 +145,8 @@ public class LevelManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Seviyeyi, alt yöneticileri ve MatchItem nesnelerini açık bir sıralamayla başlatır.
-    /// GameManager tarafından çağrıldığında InputManager, ProgressionUIManager, TimerUIManager ve Win/Lose callback'leri doğrudan aktarılır.
+    /// Initializes level, subsystems, and MatchItem objects in an explicit order.
+    /// When invoked by GameManager, InputManager, ProgressionUIManager, TimerUIManager, and Win/Lose callbacks are injected directly.
     /// </summary>
     public void InitializeLevel(
         InputManager inputMgr = null,
@@ -158,29 +160,29 @@ public class LevelManager : MonoBehaviour
         onLevelWonCallback = onWon;
         onLevelLostCallback = onLost;
 
-        // 1. InputManager'ı al veya GameManager'dan çöz
+        // 1. Resolve or assign InputManager
         if (inputMgr != null) inputManager = inputMgr;
         if (inputManager == null && GameManager.Instance != null) inputManager = GameManager.Instance.InputManager;
         if (inputManager == null) inputManager = FindFirstObjectByType<InputManager>(FindObjectsInactive.Include);
 
-        // 2. ProgressionUIManager'ı al veya GameManager'dan çöz
+        // 2. Resolve or assign ProgressionUIManager
         if (progressionUIMgr != null) progressionUIManager = progressionUIMgr;
         if (progressionUIManager == null && GameManager.Instance != null) progressionUIManager = GameManager.Instance.ProgressionUIManager;
         if (progressionUIManager == null) progressionUIManager = FindFirstObjectByType<ProgressionUIManager>(FindObjectsInactive.Include);
 
-        // 3. TimerUIManager'ı al veya GameManager'dan çöz
+        // 3. Resolve or assign TimerUIManager
         if (timerUIMgr != null) timerUIManager = timerUIMgr;
         if (timerUIManager == null && GameManager.Instance != null) timerUIManager = GameManager.Instance.TimerUIManager;
         if (timerUIManager == null) timerUIManager = FindFirstObjectByType<TimerUIManager>(FindObjectsInactive.Include);
 
-        // 4. DockManager'ı bul (Önce kendi alt objelerinde, sonra sahnede)
+        // 4. Locate DockManager (first in children, then in scene)
         if (dockManager == null) dockManager = GetComponentInChildren<DockManager>(true);
         if (dockManager == null) dockManager = FindFirstObjectByType<DockManager>(FindObjectsInactive.Include);
 
         dockManager?.Initialize();
         inputManager?.Initialize();
 
-        // 5. MatchItemRoot'u kontrol et (Önce kendi alt objelerinde, sonra sahnede)
+        // 5. Locate MatchItemRoot (first in children, then in scene)
         if (matchItemRoot == null)
         {
             Transform found = transform.Find("MatchItemRoot");
@@ -198,14 +200,15 @@ public class LevelManager : MonoBehaviour
             }
         }
 
-        // 6. Süreyi Ayarla ve Timer UI'ı Başlat (useTimer kapalıysa bar otomatik gizlenir)
+        // 6. Configure timer and initialize Timer UI (bar auto-hides if useTimer is false)
+        isTimerFrozen = false;
         currentTimer = timeLimit;
         timerUIManager?.Initialize(useTimer, currentTimer);
 
-        // 7. Masadaki MatchItem nesnelerini tara ve başlat
+        // 7. Scan and initialize MatchItem objects on board
         ScanBoardItems();
 
-        // 8. Progression UI'ı masa verileriyle başlat
+        // 8. Initialize Progression UI with board data
         progressionUIManager?.Initialize(remainingItemCount, totalItemCount);
 
         currentState = LevelState.Playing;
@@ -216,7 +219,16 @@ public class LevelManager : MonoBehaviour
     }
 
     /// <summary>
-    /// MatchItemRoot altındaki tüm MatchItem nesnelerini listeye alır ve her birini initialize eder.
+    /// Pauses or resumes the level countdown timer and updates TimerUIManager visuals.
+    /// </summary>
+    public void SetTimerFrozen(bool frozen)
+    {
+        isTimerFrozen = frozen;
+        timerUIManager?.SetFrozen(frozen);
+    }
+
+    /// <summary>
+    /// Collects all MatchItem objects under MatchItemRoot into list and initializes each.
     /// </summary>
     [ContextMenu("Scan & Collect MatchItems")]
     public void ScanBoardItems()
@@ -231,7 +243,7 @@ public class LevelManager : MonoBehaviour
             MatchItem item = foundItems[i];
             if (item != null)
             {
-                // LevelManager her MatchItem'ı açıkça initialize eder
+                // Explicitly initialize each MatchItem
                 item.Initialize();
 
                 if (item.gameObject.activeInHierarchy && item.CurrentState == MatchItem.ItemState.InPhysics)
@@ -253,7 +265,7 @@ public class LevelManager : MonoBehaviour
     }
 
     /// <summary>
-    /// DockManager'dan 3'lü eşleşme sinyali geldiğinde tetiklenir.
+    /// Triggered when DockManager reports a 3-item match.
     /// </summary>
     private void HandleItemsMatched(int itemId, Vector3 matchPos)
     {
@@ -263,7 +275,7 @@ public class LevelManager : MonoBehaviour
         progressionUIManager?.UpdateProgress(remainingItemCount, totalItemCount);
         OnItemCountChanged?.Invoke(remainingItemCount, totalItemCount);
 
-        // Zafer Kontrolü (Masada toplanacak nesne kalmadıysa)
+        // Victory check (if no remaining items to collect on board)
         if (remainingItemCount <= 0)
         {
             CheckWinCondition();
@@ -271,13 +283,13 @@ public class LevelManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Tüm nesneler toplandıktan sonra dock'taki son hareketlerin bitişini bekleyip zaferi ilan eder.
+    /// Waits for remaining movements in dock after all board items collected, then declares victory.
     /// </summary>
     public void CheckWinCondition()
     {
         if (currentState != LevelState.Playing) return;
 
-        // Masada nesne kalmadı ve dock'ta başka bekleyen/uçan nesne kalmadıysa: KAZANDIK!
+        // If no items remain on board and dock is completely clear of pending items: WIN!
         if (remainingItemCount <= 0 && (dockManager == null || (dockManager.CurrentItemCount == 0 && dockManager.ActiveMovingCount == 0)))
         {
             WinLevel();
@@ -293,7 +305,7 @@ public class LevelManager : MonoBehaviour
         OnStateChanged?.Invoke(currentState);
         OnLevelWon?.Invoke();
 
-        Debug.Log("<color=#2ecc71><b>[LevelManager]</b> TEBRİKLER! Tüm masa temizlendi, seviye kazanıldı!</color>");
+        Debug.Log("<color=#2ecc71><b>[LevelManager]</b> CONGRATULATIONS! Board cleared, level won!</color>");
     }
 
     public void LoseLevel(LoseReason reason)
@@ -305,7 +317,7 @@ public class LevelManager : MonoBehaviour
         OnStateChanged?.Invoke(currentState);
         OnLevelLost?.Invoke(reason);
 
-        Debug.Log($"<color=#e74c3c><b>[LevelManager]</b> OYUN BİTTİ! Sebep: {reason}</color>");
+        Debug.Log($"<color=#e74c3c><b>[LevelManager]</b> GAME OVER! Reason: {reason}</color>");
     }
 
     public void SetPaused(bool paused)

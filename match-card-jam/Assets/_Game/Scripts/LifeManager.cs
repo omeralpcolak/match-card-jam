@@ -163,7 +163,7 @@ public class LifeManager : MonoBehaviour
     {
         if (!HasLives)
         {
-            Debug.LogWarning("<color=#e74c3c><b>[LifeManager]</b> Yeterli can yok! Seviye başlatılamıyor.</color>");
+            Debug.LogWarning("<color=#e74c3c><b>[LifeManager]</b> Insufficient lives! Level cannot be started.</color>");
             return false;
         }
 
@@ -176,7 +176,7 @@ public class LifeManager : MonoBehaviour
             SetNextRegenTime(DateTime.UtcNow.AddSeconds(REGEN_DURATION_SECONDS));
         }
 
-        Debug.Log($"<color=#f39c12><b>[LifeManager]</b> 1 can eksildi. Kalan can: {CurrentLives}</color>");
+        Debug.Log($"<color=#f39c12><b>[LifeManager]</b> 1 life consumed. Remaining lives: {CurrentLives}</color>");
         UpdateRegeneration();
         return true;
     }
@@ -191,7 +191,7 @@ public class LifeManager : MonoBehaviour
         {
             HasPendingRefund = false;
             CurrentLives = Mathf.Min(MAX_LIVES, CurrentLives + 1);
-            Debug.Log($"<color=#2ecc71><b>[LifeManager]</b> Seviye kazanıldı! Can iade edildi. Mevcut can: {CurrentLives}</color>");
+            Debug.Log($"<color=#2ecc71><b>[LifeManager]</b> Level won! Life refunded. Current lives: {CurrentLives}</color>");
 
             if (CurrentLives >= MAX_LIVES)
             {
@@ -210,7 +210,7 @@ public class LifeManager : MonoBehaviour
         if (HasPendingRefund)
         {
             HasPendingRefund = false;
-            Debug.Log("<color=#e74c3c><b>[LifeManager]</b> Can iade hakkı iptal edildi (seviye kaybedildi veya çıkıldı).</color>");
+            Debug.Log("<color=#e74c3c><b>[LifeManager]</b> Pending life refund forfeited (level lost or abandoned).</color>");
         }
     }
 

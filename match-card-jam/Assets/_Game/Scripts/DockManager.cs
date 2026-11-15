@@ -8,8 +8,8 @@ using UnityEditor;
 #endif
 
 /// <summary>
-/// Alt tepsideki (Dock) slotları, toplanan MatchItem'ların sıralamasını ve
-/// 3'lü eşleşme (Match-3) çözümlemesini yöneten ana bileşen.
+/// Core component managing dock slots, ordering collected MatchItems,
+/// and resolving 3-item matches (Match-3).
 /// </summary>
 public class DockManager : MonoBehaviour
 {
@@ -19,21 +19,21 @@ public class DockManager : MonoBehaviour
         : _fallbackInstance;
 
     /// <summary>
-    /// 3 aynı tipteki MatchItem eşleşip yok olduğunda fırlar. (ItemId, Dünya Pozisyonu)
+    /// Fired when 3 MatchItems of the same type match and disappear (ItemId, World Position).
     /// </summary>
     public static event Action<int, Vector3> OnItemsMatched;
 
     [Header("Dock & Slot Settings")]
-    [Tooltip("Dock'un alabileceği maksimum obje sayısı.")]
+    [Tooltip("Maximum number of items the dock can hold.")]
     [SerializeField] private int capacity = 7;
 
-    [Tooltip("Slotlar arası yatay mesafe.")]
+    [Tooltip("Horizontal spacing between slots.")]
     [SerializeField] private float slotSpacing = 1.1f;
 
-    [Tooltip("Slot prefab'ı (DockSlot bileşenine sahip).")]
+    [Tooltip("Slot prefab containing a DockSlot component.")]
     [SerializeField] private DockSlot slotPrefab;
 
-    [Tooltip("Slotların child yapılacağı container. Boşsa bu transform kullanılır.")]
+    [Tooltip("Container Transform under which slots are instantiated. If null, this transform is used.")]
     [SerializeField] private Transform slotContainer;
 
     [Header("Slots List")]
@@ -49,7 +49,7 @@ public class DockManager : MonoBehaviour
     [SerializeField] private float matchConvergeDuration = 0.16f;
     [SerializeField] private float matchShrinkDuration = 0.18f;
 
-    // Aktif hareket takibi ve kilit kontrolü
+    // Active movement tracking and lock controls
     private int activeMovingCount = 0;
     private bool isResolvingMatch = false;
 
@@ -98,7 +98,7 @@ public class DockManager : MonoBehaviour
     }
 
     /// <summary>
-    /// LevelManager tarafından açık sırayla çağrılır.
+    /// Explicitly called by LevelManager in initialization sequence.
     /// </summary>
     public void Initialize()
     {
@@ -126,25 +126,25 @@ public class DockManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Seçilen bir MatchItem'ı dock'a uygun slota yerleştirir.
-    /// Aynı tipteki objeleri akıllıca yan yana gruplar.
+    /// Places a chosen MatchItem into the appropriate dock slot.
+    /// Intelligently clusters items of the same type side-by-side.
     /// </summary>
     public bool TryAddItem(MatchItem item)
     {
         if (item == null || isResolvingMatch || !HasEmptySlot) return false;
 
-        // 1. Akıllı Yerleşim İndeksini Bul
+        // 1. Calculate intelligent insert index
         int targetIndex = CalculateInsertIndex(item);
 
         if (targetIndex < 0 || targetIndex >= slots.Count) return false;
 
-        // 2. Eğer hedef slot doluysa, sağındaki kartları birer slot sağa kaydır
+        // 2. If target slot is occupied, shift cards to the right by one slot
         if (!slots[targetIndex].IsEmpty)
         {
             ShiftItemsRightFrom(targetIndex);
         }
 
-        // 3. Yeni gelen objeyi hedef slota yerleştir ve zıplatarak uçur
+        // 3. Place incoming item into target slot and launch with jump animation
         activeMovingCount++;
         slots[targetIndex].PlaceItemWithJump(item, moveDuration, jumpPower, moveEase, () =>
         {
@@ -156,7 +156,7 @@ public class DockManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Uçuş veya kayma hareketi bittiğinde çağrılır. Tüm hareketler bittiyse eşleşmeyi tetikler.
+    /// Called when flight or slide animation finishes. Triggers match resolution when all movements settle.
     /// </summary>
     private void OnMovementFinished()
     {
@@ -169,8 +169,8 @@ public class DockManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Dock içinde aynı Id'ye sahip son elemanı bulur ve hemen sonrasını döner.
-    /// Yoksa ilk boş slotu döner.
+    /// Finds the last element with matching ID in the dock and returns the slot right after it.
+    /// If no match exists, returns the first empty slot.
     /// </summary>
     private int CalculateInsertIndex(MatchItem newItem)
     {
@@ -202,7 +202,8 @@ public class DockManager : MonoBehaviour
     }
 
     /// <summary>
-    /// targetIndex'ten itibaren dolu olan slotlardaki kartları sağa doğru 1 birim kaydırır.
+    /// <summary>
+    /// Shifts occupied cards starting from targetIndex to the right by one unit.
     /// </summary>
     private void ShiftItemsRightFrom(int targetIndex)
     {
@@ -237,7 +238,7 @@ public class DockManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Dock içinde yan yana 3 tane aynı ID'li MatchItem olup olmadığını kontrol eder.
+    /// Checks if there are 3 adjacent MatchItems with the same ID in the dock.
     /// </summary>
     private void CheckAndResolveMatches()
     {
@@ -245,7 +246,7 @@ public class DockManager : MonoBehaviour
 
         int matchStartIndex = -1;
 
-        // Akıllı gruplama sayesinde aynı türler yan yana durur; 3 ardışık slotu tara
+        // Due to intelligent grouping, identical types stay adjacent; check consecutive 3 slots
         for (int i = 0; i <= slots.Count - 3; i++)
         {
             if (slots[i] != null && !slots[i].IsEmpty &&
@@ -270,16 +271,16 @@ public class DockManager : MonoBehaviour
         }
         else
         {
-            // 3'lü eşleşme yok; dock tıkandı mı kontrol et
+            // No 3-item match found; check if dock is deadlocked
             CheckDockDeadlock();
 
-            // Masada toplanacak nesne kalmadıysa zafer kontrolünü tetikle
+            // If no remaining items on board, trigger win check
             LevelManager.Instance?.CheckWinCondition();
         }
     }
 
     /// <summary>
-    /// Dock tamamen doluysa, uçuşta başka nesne yoksa ve 3'lü eşleşme kalmadıysa oyunu kaybettirir.
+    /// Triggers level loss if dock is completely full, no items in flight, and no matches remain.
     /// </summary>
     private void CheckDockDeadlock()
     {
@@ -290,7 +291,7 @@ public class DockManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Bulunan 3'lü eşleşmeyi oynatır: Ortada birleşme -> Pop & Küçülme -> SetActive(false) -> Boşlukları kapatma.
+    /// Plays 3-item match sequence: Converge at center -> Pop & Shrink -> SetActive(false) -> Compact slots.
     /// </summary>
     private void ResolveMatch(int startIndex)
     {
@@ -307,45 +308,47 @@ public class DockManager : MonoBehaviour
         int matchedId = centerItem.Id;
         Vector3 matchCenterWorldPos = centerSlot.MatchItemRoot.position;
 
-        // Slotları mantıksal olarak hemen boşalt
+        // Immediately clear slots logically
         leftSlot.Clear();
         centerSlot.Clear();
         rightSlot.Clear();
 
-        // 1. Aşama: Outline beyaz parlaması
+        // Stage 1: Outline flash feedback
         leftItem.PlayClickFeedback();
         centerItem.PlayClickFeedback();
         rightItem.PlayClickFeedback();
 
+        SoundManager.PlaySound(SoundType.CardMatch);
+
         Sequence matchSeq = DOTween.Sequence();
 
-        // 2. Aşama: Sol ve sağ kartların ortadaki kartın üzerine doğru hızla kayması
+        // Stage 2: Left and right cards converge towards center card
         matchSeq.Append(leftItem.transform.DOMove(matchCenterWorldPos, matchConvergeDuration).SetEase(Ease.InQuad));
         matchSeq.Join(rightItem.transform.DOMove(matchCenterWorldPos, matchConvergeDuration).SetEase(Ease.InQuad));
         matchSeq.Join(centerItem.transform.DOPunchScale(Vector3.one * 0.15f, matchConvergeDuration, 1, 0.5f));
 
-        // 3. Aşama: Merkezde birleşen 3 kartın zıplayıp küçülerek yok olması
+        // Stage 3: 3 converged cards scale down and disappear
         matchSeq.Append(leftItem.transform.DOScale(Vector3.zero, matchShrinkDuration).SetEase(Ease.InBack));
         matchSeq.Join(centerItem.transform.DOScale(Vector3.zero, matchShrinkDuration).SetEase(Ease.InBack));
         matchSeq.Join(rightItem.transform.DOScale(Vector3.zero, matchShrinkDuration).SetEase(Ease.InBack));
 
         matchSeq.OnComplete(() =>
         {
-            // Kartları devre dışı bırak
+            // Deactivate matched cards
             if (leftItem != null) leftItem.gameObject.SetActive(false);
             if (centerItem != null) centerItem.gameObject.SetActive(false);
             if (rightItem != null) rightItem.gameObject.SetActive(false);
 
-            // Eşleşme event'ini ateşle
+            // Fire matched event
             OnItemsMatched?.Invoke(matchedId, matchCenterWorldPos);
 
-            // Sağda kalan kartları sola kaydırıp aradaki 3 slotluk boşluğu kapat
+            // Slide remaining cards left to close the 3-slot gap
             CompactSlotsLeft();
         });
     }
 
     /// <summary>
-    /// Eşleşme sonrası aradaki boşlukları kapatmak için sağda kalan tüm kartları sola kaydırır.
+    /// Slides all remaining cards to the left to close gaps after a match.
     /// </summary>
     private void CompactSlotsLeft()
     {
@@ -368,7 +371,7 @@ public class DockManager : MonoBehaviour
                         if (shiftCount <= 0)
                         {
                             isResolvingMatch = false;
-                            // Zincirleme eşleşme var mı diye tekrar kontrol et
+                            // Check again for chained matches
                             CheckAndResolveMatches();
                         }
                     });
@@ -377,7 +380,7 @@ public class DockManager : MonoBehaviour
             }
         }
 
-        // Eğer kayacak kart yoksa (en sağdaki 3'lü eşleştiyse) doğrudan kilidi aç ve kontrol et
+        // If no cards need shifting (rightmost 3 matched), unlock and check immediately
         if (shiftCount == 0)
         {
             isResolvingMatch = false;

@@ -4,37 +4,37 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Masadaki nesnelerin temizlenme oranını UI Image (Fill) üzerinden görselleştiren yönetici.
-/// LevelManager tarafından doğrudan kontrol edilir (sıfır statik event bağımlılığı).
+/// Visualizes the board clearing progress via a UI Image (Fill Amount).
+/// Controlled directly by LevelManager (zero static event coupling).
 /// </summary>
 public class ProgressionUIManager : MonoBehaviour
 {
     [Header("UI Elements")]
-    [Tooltip("Doldurulacak UI Image bileşeni (Image Type: Filled olmalı).")]
+    [Tooltip("UI Image component to fill (Image Type must be Filled).")]
     [SerializeField] private Image fillImage;
 
-    [Tooltip("Seviye numarasını gösteren TextMeshProUGUI bileşeni.")]
+    [Tooltip("TextMeshProUGUI component displaying the level number.")]
     [SerializeField] private TextMeshProUGUI levelNoText;
 
     [Header("Text Format")]
-    [Tooltip("Seviye metninin öneki (Örn: 'Level ' -> 'Level 1').")]
+    [Tooltip("Prefix for the level text (e.g. 'Level ' -> 'Level 1').")]
     [SerializeField] private string levelPrefix = "Level ";
 
     [Header("Animation Settings")]
-    [Tooltip("Barın yeni değere dolma süresi.")]
+    [Tooltip("Duration for the bar to animate to the new fill value.")]
     [SerializeField] private float fillDuration = 0.25f;
 
-    [Tooltip("Dolum animasyonu eğrisi.")]
+    [Tooltip("Easing curve for the fill animation.")]
     [SerializeField] private Ease fillEase = Ease.OutQuad;
 
     [Header("Juice / Punch Effect")]
-    [Tooltip("Eşleşme olduğunda bar hafifçe esnesin/zıplasın mı?")]
+    [Tooltip("Whether the bar punches/bounces slightly when a match occurs.")]
     [SerializeField] private bool usePunchEffect = true;
 
-    [Tooltip("Zıplama büyüklüğü.")]
+    [Tooltip("Punch scale intensity.")]
     [SerializeField] private float punchStrength = 0.08f;
 
-    [Tooltip("Zıplama süresi.")]
+    [Tooltip("Punch duration.")]
     [SerializeField] private float punchDuration = 0.2f;
 
     private const string KEY_CURRENT_LEVEL = "CurrentLevel";
@@ -59,8 +59,8 @@ public class ProgressionUIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// LevelManager tarafından seviye başlangıcında doğrudan çağrılır.
-    /// Başlangıç durumunu ve seviye numarasını anında kurar.
+    /// Called directly by LevelManager at level start.
+    /// Immediately sets up initial progress state and level number.
     /// </summary>
     public void Initialize(int remainingItems = 0, int totalItems = 0, int levelNumber = -1)
     {
@@ -88,8 +88,8 @@ public class ProgressionUIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Oyuncunun PlayerPrefs'teki güncel seviyesini okur ve metni günceller.
-    /// Prefab'ler başa sarsa bile gerçek oyuncu seviyesini gösterir (Level 1, Level 2, Level 4...).
+    /// Reads current level from GameData and updates text.
+    /// Displays true progression level (Level 1, Level 2, Level 4...).
     /// </summary>
     public void UpdateLevelText()
     {
@@ -97,7 +97,7 @@ public class ProgressionUIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Seviye numarasını doğrudan verilen değere göre günceller.
+    /// Sets the level number directly to the specified value.
     /// </summary>
     public void SetLevelNumber(int levelNumber)
     {
@@ -126,8 +126,8 @@ public class ProgressionUIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// LevelManager tarafından her eşleşme olduğunda doğrudan çağrılır.
-    /// Kalan azaldıkça bar dolacak şekilde animasyonu oynatır.
+    /// Called directly by LevelManager whenever a match occurs.
+    /// Animates bar fill as remaining item count decreases.
     /// </summary>
     public void UpdateProgress(int remaining, int total)
     {

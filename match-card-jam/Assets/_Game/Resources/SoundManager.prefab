@@ -60,6 +60,26 @@ MonoBehaviour:
     volume: 1
     minPitch: 1
     maxPitch: 1
+  - soundType: 3
+    clip: {fileID: 8300000, guid: cdd77e3844676440d8bec9bdc5677efc, type: 3}
+    volume: 0.9
+    minPitch: 0.98
+    maxPitch: 1.02
+  - soundType: 4
+    clip: {fileID: 8300000, guid: 47be9d3bf41a642128db5c87a14dc543, type: 3}
+    volume: 1
+    minPitch: 0.98
+    maxPitch: 1.02
+  - soundType: 5
+    clip: {fileID: 8300000, guid: 4978329eefbe34800b15a216693f00e6, type: 3}
+    volume: 0.7
+    minPitch: 1
+    maxPitch: 1
+  - soundType: 6
+    clip: {fileID: 8300000, guid: be2809459618d42708eea86702bbf822, type: 3}
+    volume: 0.8
+    minPitch: 1
+    maxPitch: 1
   musicConfigs:
   - musicType: 0
     clip: {fileID: 8300000, guid: 53fd023336ce449b0b5d199c98e04bd9, type: 3}
