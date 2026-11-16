@@ -191,7 +191,7 @@ public class LevelFailPopup : PopupBase<LevelFailPopup>
             restartButton.transform.DOPunchScale(Vector3.one * 0.1f, 0.2f, 1, 0.5f);
         }
 
-        // Can 0 ise NoLivesLeftPopup açılır ve restart engellenir
+        // If lives are 0, open NoLivesLeftPopup and prevent restart
         if (!LifeManager.HasLives)
         {
             if (restartButton != null)
@@ -204,7 +204,7 @@ public class LevelFailPopup : PopupBase<LevelFailPopup>
 
         if (restartButton != null) restartButton.interactable = false;
 
-        // Seviye yeniden başlatıldığı için 1 can eksilir
+        // Consume 1 life when restarting the level
         LifeManager.TryConsumeLife();
 
         SceneTransition.ReloadCurrentScene();

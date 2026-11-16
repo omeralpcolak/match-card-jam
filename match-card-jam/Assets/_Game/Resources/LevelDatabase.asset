@@ -14,4 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelDatabase
   levelPrefabs:
   - {fileID: 6052245708243606166, guid: 3d50b720de4024c18af6b85613687e7d, type: 3}
+  - {fileID: 8585946069644648398, guid: 33ea28670ca1a46f08d50e5b07a4851a, type: 3}
+  - {fileID: 6523902394085597757, guid: 2a0eee8c1ce5141ac91df4d84187e4b9, type: 3}
+  - {fileID: 7801518078447922710, guid: 884ee736c42754f18a0774112b564470, type: 3}
+  - {fileID: 1064904709451445483, guid: 0dd6518b461f4426486fdf0343704e47, type: 3}
+  - {fileID: 7731388234979154240, guid: f59ab5a955d35447eb82b32923b34ae2, type: 3}
+  - {fileID: 5111665728312410078, guid: f1dc3545531f541d7a4f854cb1ae5e05, type: 3}
+  - {fileID: 4713437006245925558, guid: 00921f8c9d9d24649835e4ca115e2e45, type: 3}
+  - {fileID: 4912064616113894211, guid: 16bb50e3dc16e481c9a633e98555ab27, type: 3}
+  - {fileID: 7572301066382127231, guid: 0135f16b9626c437c8479ca23724d9cc, type: 3}
   loopLevels: 1

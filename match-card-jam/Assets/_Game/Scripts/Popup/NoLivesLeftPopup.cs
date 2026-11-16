@@ -77,7 +77,7 @@ public class NoLivesLeftPopup : PopupBase<NoLivesLeftPopup>
     private void OnShopClicked()
     {
         SoundManager.PlayButtonSound();
-        Debug.Log("<color=#f39c12><b>[NoLivesLeftPopup]</b> ShopButton tıklandı (Shop sistemi açıldığında buraya bağlanacak).</color>");
+        Debug.Log("<color=#f39c12><b>[NoLivesLeftPopup]</b> ShopButton clicked (connect to Shop system once implemented).</color>");
     }
 
     /// <summary>

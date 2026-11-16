@@ -106,6 +106,11 @@ public class HintSpotlightPowerup : PowerupBase
             MatchItem item = _hintedItems[i];
             if (item == null || item.CurrentState != MatchItem.ItemState.InPhysics)
             {
+                if (item != null && item.CurrentState != MatchItem.ItemState.Selected && item.Outline != null)
+                {
+                    item.Outline.SetHighlighted(false);
+                }
+
                 // Player picked this item; remove its indicator so it doesn't linger on the table.
                 if (i < _spawnedIndicators.Count && _spawnedIndicators[i] != null)
                 {

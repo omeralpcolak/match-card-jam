@@ -151,7 +151,7 @@ public class MainMenuManager : MonoBehaviour
             playButton.transform.DOPunchScale(Vector3.one * 0.12f, 0.25f, 1, 0.5f);
         }
 
-        // 1. Can 0 Kontrolü: Seviyeye giriş engellenir ve NoLivesLeftPopup açılır
+        // 1. Check if lives are 0: block level entry and open NoLivesLeftPopup
         if (!LifeManager.HasLives)
         {
             if (playButton != null)
@@ -162,11 +162,11 @@ public class MainMenuManager : MonoBehaviour
             return;
         }
 
-        // 2. Sahne kararma geçişi sırasında UI'ın (özellikle FULL yazısının aniden süreye) değişmesini dondur
+        // 2. Freeze UI updates (preventing FULL from abruptly switching to countdown) during scene fade
         LifeManager.OnLivesChanged -= UpdateLifeDisplay;
         LifeManager.OnTimerTick -= UpdateTimerDisplay;
 
-        // 3. Can 1 eksiltilir ve seviyeye girilir
+        // 3. Consume 1 life and load into the level
         if (LifeManager.TryConsumeLife())
         {
             SceneTransition.LoadScene(gameSceneName);

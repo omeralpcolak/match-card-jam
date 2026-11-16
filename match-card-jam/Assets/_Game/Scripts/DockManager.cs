@@ -166,7 +166,10 @@ public class DockManager : MonoBehaviour
         {
             activeMovingCount = 0;
             CheckAndResolveMatches();
-            OnDockSettled?.Invoke();
+            if (!isResolvingMatch)
+            {
+                OnDockSettled?.Invoke();
+            }
         }
     }
 
@@ -375,6 +378,10 @@ public class DockManager : MonoBehaviour
                             isResolvingMatch = false;
                             // Check again for chained matches
                             CheckAndResolveMatches();
+                            if (!isResolvingMatch && activeMovingCount == 0)
+                            {
+                                OnDockSettled?.Invoke();
+                            }
                         }
                     });
                 }
@@ -387,6 +394,10 @@ public class DockManager : MonoBehaviour
         {
             isResolvingMatch = false;
             CheckAndResolveMatches();
+            if (!isResolvingMatch && activeMovingCount == 0)
+            {
+                OnDockSettled?.Invoke();
+            }
         }
     }
 

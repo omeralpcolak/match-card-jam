@@ -182,7 +182,7 @@ public class PlayerPrefsEditor : EditorWindow
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Regen Test:", GUILayout.Width(110));
-            if (GUILayout.Button("⏩ +15 Dk Simüle Et (1 Can Ekle)", EditorStyles.miniButton))
+            if (GUILayout.Button("⏩ Simulate +15m (+1 Life)", EditorStyles.miniButton))
             {
                 if (Application.isPlaying)
                 {

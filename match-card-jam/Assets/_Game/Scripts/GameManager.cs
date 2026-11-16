@@ -67,7 +67,7 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Sahne alt sistemlerini (Input, UI) otomatik bulur ve bağlar.
+    /// Automatically finds and binds scene subsystems (Input, UI, Powerups).
     /// </summary>
     public void ResolveSubsystems()
     {
@@ -109,9 +109,9 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Sahnedeki veya dışarıdan verilen LevelManager'ı başlatır.
-    /// Sahnede yoksa LevelDatabase'den mevcut seviyenin prefab'ini yaratır.
-    /// Kazanma ve kaybetme fonksiyonları doğrudan parametre olarak aktarılır (sıfır statik event).
+    /// Initializes the LevelManager found in the scene or provided externally.
+    /// Instantiates the current level prefab from LevelDatabase if none exists in the scene.
+    /// Win and lose callbacks are passed directly as parameters (zero static events).
     /// </summary>
     public void InitializeActiveLevel(LevelManager levelManager = null)
     {
@@ -120,13 +120,13 @@ public class GameManager : MonoBehaviour
             currentLevelManager = levelManager;
         }
 
-        // 1. Sahnede zaten bir LevelManager duruyor mu kontrol et (Editör test desteği)
+        // 1. Check if a LevelManager already exists in the scene (Editor testing support)
         if (currentLevelManager == null)
         {
             currentLevelManager = FindFirstObjectByType<LevelManager>(FindObjectsInactive.Include);
         }
 
-        // 2. Sahnede yoksa LevelDatabase'den mevcut seviyeyi masaya yarat
+        // 2. If not found in scene, instantiate the current level from LevelDatabase
         if (currentLevelManager == null)
         {
             int currentLevel = GameData.CurrentLevel;
@@ -153,15 +153,15 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[GameManager] Başlatılacak LevelManager sahnede bulunamadı ve LevelDatabase atanmamış!");
+            Debug.LogWarning("[GameManager] No LevelManager found in scene to initialize and LevelDatabase is not assigned!");
         }
     }
 
     private void HandleLevelWon()
     {
-        Debug.Log("<color=#2ecc71><b>[GameManager]</b> Seviye başarıyla tamamlandı!</color>");
+        Debug.Log("<color=#2ecc71><b>[GameManager]</b> Level completed successfully!</color>");
 
-        // 1. Seviye kazanıldığı için eksilen can iade edilir
+        // 1. Refund the pending life consumed when starting the level
         GameData.RefundLife();
 
         // 2. Advance level progression
@@ -176,9 +176,9 @@ public class GameManager : MonoBehaviour
 
     private void HandleLevelLost(LevelManager.LoseReason reason)
     {
-        Debug.Log($"<color=#e74c3c><b>[GameManager]</b> Seviye kaybedildi. Sebep: {reason}</color>");
+        Debug.Log($"<color=#e74c3c><b>[GameManager]</b> Level lost. Reason: {reason}</color>");
 
-        // Seviye kaybedildiği için can iade hakkı düşer, can yenilenme süreci kesintisiz devam eder
+        // Forfeit the pending life refund on defeat; life regeneration continues uninterrupted
         LifeManager.ForfeitPendingRefund();
 
         // Wait briefly for the last card dock animation or timer to settle, then show fail popup

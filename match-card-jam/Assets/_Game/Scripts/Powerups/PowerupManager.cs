@@ -123,9 +123,7 @@ public class PowerupManager : MonoBehaviour
             PowerupDataSO data = uiItem.Data;
             bool available = GameData.IsPowerupUnlocked(data.PowerupType)
                              && GameData.GetPowerupCount(data.PowerupType) > 0
-                             && !_activeTypes.Contains(data.PowerupType)
-                             && data.PowerupPrefab != null
-                             && data.PowerupPrefab.CanActivate(BuildContext(data));
+                             && CanActivatePowerup(data, BuildContext(data));
 
             uiItem.SetAvailable(available);
         }
@@ -219,14 +217,8 @@ public class PowerupManager : MonoBehaviour
         PowerupDataSO data = uiItem.Data;
         if (!GameData.IsPowerupUnlocked(data.PowerupType)) return;
 
-        if (_activeTypes.Contains(data.PowerupType) || data.PowerupPrefab == null)
-        {
-            uiItem.PlayUnavailableShake();
-            return;
-        }
-
         PowerupContext context = BuildContext(data);
-        if (!data.PowerupPrefab.CanActivate(context))
+        if (!CanActivatePowerup(data, context))
         {
             uiItem.PlayUnavailableShake();
             return;
@@ -239,6 +231,18 @@ public class PowerupManager : MonoBehaviour
         }
 
         ActivatePowerup(data, context);
+    }
+
+    private bool CanActivatePowerup(PowerupDataSO data, PowerupContext context)
+    {
+        if (data == null || data.PowerupPrefab == null) return false;
+        if (_activeTypes.Contains(data.PowerupType)) return false;
+
+        // Prevent Magnet and ClearDock from overlapping while dock slots/items are mid-transition.
+        if (data.PowerupType == PowerupType.Magnet && _activeTypes.Contains(PowerupType.ClearDock)) return false;
+        if (data.PowerupType == PowerupType.ClearDock && _activeTypes.Contains(PowerupType.Magnet)) return false;
+
+        return data.PowerupPrefab.CanActivate(context);
     }
 
     private PowerupContext BuildContext(PowerupDataSO data)

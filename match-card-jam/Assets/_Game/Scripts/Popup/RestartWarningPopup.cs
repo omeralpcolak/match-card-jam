@@ -84,7 +84,7 @@ public class RestartWarningPopup : PopupBase<RestartWarningPopup>
 
         SoundManager.PlayButtonSound();
 
-        // Can 0 kontrolü:
+        // Check if player has remaining lives
         if (!LifeManager.HasLives)
         {
             if (yesButton != null)

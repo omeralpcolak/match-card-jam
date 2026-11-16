@@ -28,6 +28,7 @@ public class MagnetPowerup : PowerupBase
     private readonly List<AttachedVfx> _attachedVfx = new();
     private LevelManager _levelManager;
     private DockManager _dockManager;
+    private InputManager _inputManager;
     private int _nextPullIndex;
     private float _staggerTimer;
     private bool _isPulling;
@@ -36,6 +37,7 @@ public class MagnetPowerup : PowerupBase
     protected override void OnDestroy()
     {
         base.OnDestroy();
+        RestoreInput();
 
         for (int i = _attachedVfx.Count - 1; i >= 0; i--)
         {
@@ -57,6 +59,7 @@ public class MagnetPowerup : PowerupBase
     {
         _levelManager = context.LevelManager;
         _dockManager = context.DockManager;
+        _inputManager = context.InputManager;
         _targetItems.Clear();
 
         if (!TryFindBestMagnetTargets(context, _targetItems) || _targetItems.Count == 0)
@@ -65,7 +68,13 @@ public class MagnetPowerup : PowerupBase
             return;
         }
 
-        // 1. Pull first item immediately, stagger the rest in Update
+        // Lock board input briefly during staggered dispatch so player taps cannot steal reserved dock slots
+        if (_inputManager != null)
+        {
+            _inputManager.enabled = false;
+        }
+
+        // Pull first item immediately, stagger the rest in Update
         _nextPullIndex = 0;
         _staggerTimer = 0f;
         _isPulling = true;
@@ -128,6 +137,16 @@ public class MagnetPowerup : PowerupBase
         }
 
         _isPulling = false;
+        RestoreInput();
+    }
+
+    private void RestoreInput()
+    {
+        if (_inputManager != null)
+        {
+            _inputManager.enabled = true;
+            _inputManager = null;
+        }
     }
 
     private void AttachVfxToItem(MatchItem item)

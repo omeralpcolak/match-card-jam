@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c598c4046c5a4c0f9bd45ca9d92ccef, type: 3}
   m_Name: ShuffleFanData
   m_EditorClassIdentifier: Assembly-CSharp::PowerupDataSO
-  powerupType: 2
-  displayName: 
-  icon: {fileID: 21300000, guid: 5b3388779a3ff4f97bba1cfdab350898, type: 3}
-  unlockLevel: 1
-  defaultAmount: 10
-  coinCost: 1000
-  duration: 1.5
+  _powerupType: 2
+  _displayName: 
+  _icon: {fileID: 21300000, guid: 5b3388779a3ff4f97bba1cfdab350898, type: 3}
+  _unlockLevel: 18
+  _defaultAmount: 10
+  _coinCost: 1000
+  _duration: 1.5
   _powerupPrefab: {fileID: 5152730362767184124, guid: fabe274eed64b4024b8cf0adfffd32e2, type: 3}

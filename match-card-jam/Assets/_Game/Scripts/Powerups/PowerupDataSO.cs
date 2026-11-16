@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// ScriptableObject holding static configuration data for a single power-up.
@@ -9,42 +10,49 @@ public class PowerupDataSO : ScriptableObject
 {
     [Header("Identity")]
     [Tooltip("Unique type identifier for this power-up.")]
-    [SerializeField] private PowerupType powerupType;
+    [FormerlySerializedAs("powerupType")]
+    [SerializeField] private PowerupType _powerupType;
 
     [Tooltip("Display name shown in UI / unlock popups.")]
-    [SerializeField] private string displayName;
+    [FormerlySerializedAs("displayName")]
+    [SerializeField] private string _displayName;
 
     [Header("UI")]
     [Tooltip("Icon sprite displayed on the PowerupUiItem button.")]
-    [SerializeField] private Sprite icon;
+    [FormerlySerializedAs("icon")]
+    [SerializeField] private Sprite _icon;
 
     [Header("Progression & Economy")]
     [Tooltip("1-based level at which this power-up unlocks.")]
     [Min(1)]
-    [SerializeField] private int unlockLevel = 1;
+    [FormerlySerializedAs("unlockLevel")]
+    [SerializeField] private int _unlockLevel = 1;
 
     [Tooltip("Initial amount granted to the player when first initialized.")]
     [Min(0)]
-    [SerializeField] private int defaultAmount = 3;
+    [FormerlySerializedAs("defaultAmount")]
+    [SerializeField] private int _defaultAmount = 3;
 
     [Tooltip("Coin cost to purchase 1 charge when the player runs out.")]
     [Min(0)]
-    [SerializeField] private int coinCost = 100;
+    [FormerlySerializedAs("coinCost")]
+    [SerializeField] private int _coinCost = 100;
 
     [Header("Gameplay")]
     [Tooltip("Effect duration in seconds (used by timed power-ups like FreezeTime or HintSpotlight).")]
     [Min(0f)]
-    [SerializeField] private float duration = 10f;
+    [FormerlySerializedAs("duration")]
+    [SerializeField] private float _duration = 10f;
 
     [Tooltip("PowerupBase prefab instantiated in the scene when activated.")]
     [SerializeField] private PowerupBase _powerupPrefab;
 
-    public PowerupType PowerupType => powerupType;
-    public string DisplayName => string.IsNullOrEmpty(displayName) ? powerupType.ToString() : displayName;
-    public Sprite Icon => icon;
-    public int UnlockLevel => unlockLevel;
-    public int DefaultAmount => defaultAmount;
-    public int CoinCost => coinCost;
-    public float Duration => duration;
+    public PowerupType PowerupType => _powerupType;
+    public string DisplayName => string.IsNullOrEmpty(_displayName) ? _powerupType.ToString() : _displayName;
+    public Sprite Icon => _icon;
+    public int UnlockLevel => _unlockLevel;
+    public int DefaultAmount => _defaultAmount;
+    public int CoinCost => _coinCost;
+    public float Duration => _duration;
     public PowerupBase PowerupPrefab => _powerupPrefab;
 }

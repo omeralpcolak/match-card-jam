@@ -211,7 +211,7 @@ public class SettingsPopup : PopupBase<SettingsPopup>
 
         if (homeButton != null) homeButton.interactable = false;
 
-        // Seviye ortasında ayarlardan çıkıldığı için can iade hakkı düşer (can geri verilmez)
+        // Forfeit pending life refund when leaving mid-level via settings
         LifeManager.ForfeitPendingRefund();
 
         if (Application.CanStreamedLevelBeLoaded(mainMenuSceneName))

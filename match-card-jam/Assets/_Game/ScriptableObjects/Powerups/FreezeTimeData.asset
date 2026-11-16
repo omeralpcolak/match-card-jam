@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c598c4046c5a4c0f9bd45ca9d92ccef, type: 3}
   m_Name: FreezeTimeData
   m_EditorClassIdentifier: Assembly-CSharp::PowerupDataSO
-  powerupType: 0
-  displayName: 
-  icon: {fileID: 21300000, guid: 3ae46425cd3b444058a4c97b7ffb8908, type: 3}
-  unlockLevel: 1
-  defaultAmount: 10
-  coinCost: 500
-  duration: 10
+  _powerupType: 0
+  _displayName: 
+  _icon: {fileID: 21300000, guid: 3ae46425cd3b444058a4c97b7ffb8908, type: 3}
+  _unlockLevel: 6
+  _defaultAmount: 10
+  _coinCost: 500
+  _duration: 10
   _powerupPrefab: {fileID: 8286620617496660118, guid: 7f209edfddbde4dbfb12b37c3d4f988d, type: 3}

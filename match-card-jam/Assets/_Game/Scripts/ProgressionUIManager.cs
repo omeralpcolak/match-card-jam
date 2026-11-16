@@ -67,6 +67,7 @@ public class ProgressionUIManager : MonoBehaviour
     private bool isInitialized;
 
     private readonly Queue<RectTransform> _orbPool = new();
+    private readonly List<RectTransform> _activeOrbs = new();
     private readonly List<Tween> _activeFlyTweens = new();
     private Canvas _parentCanvas;
     private RectTransform _flySpaceRect;
@@ -215,10 +216,12 @@ public class ProgressionUIManager : MonoBehaviour
         }).SetEase(_flyEase));
 
         _activeFlyTweens.Add(seq);
+        _activeOrbs.Add(orb);
 
         seq.OnComplete(() =>
         {
             _activeFlyTweens.Remove(seq);
+            _activeOrbs.Remove(orb);
             ReturnOrbToPool(orb);
             TriggerArrivalFeedback(remaining, total);
         });
@@ -328,6 +331,12 @@ public class ProgressionUIManager : MonoBehaviour
             _activeFlyTweens[i]?.Kill();
         }
         _activeFlyTweens.Clear();
+
+        for (int i = _activeOrbs.Count - 1; i >= 0; i--)
+        {
+            ReturnOrbToPool(_activeOrbs[i]);
+        }
+        _activeOrbs.Clear();
 
         if (initialScale != Vector3.zero)
         {

@@ -29,7 +29,7 @@ public static class BilliardFeltGenerator
         int height = 1024;
         Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
 
-        // Klasik bilardo masası zümrüt/orman yeşili tonları
+        // Classic billiard table emerald/forest green shades
         Color darkGreen = new Color(0.06f, 0.32f, 0.18f);
         Color baseGreen = new Color(0.08f, 0.40f, 0.23f);
         Color lightGreen = new Color(0.12f, 0.46f, 0.27f);
@@ -38,18 +38,18 @@ public static class BilliardFeltGenerator
         {
             for (int x = 0; x < width; x++)
             {
-                // Keçe kumaş dokusu için çok katmanlı Perlin Noise
+                // Multi-layered Perlin noise for felt fabric texture
                 float n1 = Mathf.PerlinNoise(x * 0.04f, y * 0.04f);
                 float n2 = Mathf.PerlinNoise(x * 0.18f, y * 0.18f) * 0.5f;
                 float n3 = Mathf.PerlinNoise(x * 0.70f, y * 0.70f) * 0.25f;
 
-                // İnce kumaş örgü hissi (Weave micro-pattern)
+                // Subtle cloth weave micro-pattern
                 float weave = (Mathf.Sin(x * 1.8f) * Mathf.Cos(y * 1.8f)) * 0.025f;
 
                 float blend = Mathf.Clamp01((n1 + n2 + n3) / 1.75f + weave);
                 Color pixel = Color.Lerp(darkGreen, lightGreen, blend);
 
-                // Yün lifleri için mikro gren
+                // Micro-grain for wool fibers
                 float grain = (Random.value - 0.5f) * 0.035f;
                 pixel.r = Mathf.Clamp01(pixel.r + grain);
                 pixel.g = Mathf.Clamp01(pixel.g + grain);
@@ -74,7 +74,7 @@ public static class BilliardFeltGenerator
 
         AssetDatabase.ImportAsset(TexturePath, ImportAssetOptions.ForceUpdate);
 
-        // Texture ayarlarını keçe kumaşına uygun ayarla
+        // Configure texture importer settings for felt fabric
         TextureImporter importer = AssetImporter.GetAtPath(TexturePath) as TextureImporter;
         if (importer != null)
         {
@@ -83,10 +83,10 @@ public static class BilliardFeltGenerator
             importer.SaveAndReimport();
         }
 
-        // Materyali oluştur veya güncelle
+        // Create or update material
         CreateOrUpdateMaterial();
 
-        Debug.Log($"<color=#2ecc71><b>[BilliardFelt]</b> Bilardo keçesi dokusu ve materyali başarıyla oluşturuldu!</color>");
+        Debug.Log("<color=#2ecc71><b>[BilliardFelt]</b> Billiard felt texture and material created successfully!</color>");
     }
 
     private static void CreateOrUpdateMaterial()
@@ -102,10 +102,10 @@ public static class BilliardFeltGenerator
 
             mat = new Material(litShader);
             mat.SetTexture("_BaseMap", texture);
-            mat.SetFloat("_Smoothness", 0.08f); // Keçe kumaş mat olur (parlama yapmaz)
+            mat.SetFloat("_Smoothness", 0.08f); // Felt fabric is matte (no glossy reflections)
             mat.SetColor("_BaseColor", Color.white);
 
-            // Plane üzerinde tekrar etmesi (tiling) için
+            // Tiling across the plane surface
             mat.SetTextureScale("_BaseMap", new Vector2(4f, 4f));
 
             AssetDatabase.CreateAsset(mat, MaterialPath);

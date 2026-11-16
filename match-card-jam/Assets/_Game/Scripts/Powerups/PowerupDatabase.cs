@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// ScriptableObject database holding all PowerupDataSO assets.
@@ -10,7 +11,7 @@ public class PowerupDatabase : ScriptableObject
 {
     private const string RESOURCE_PATH = "PowerupDatabase";
 
-    private static PowerupDatabase instance;
+    private static PowerupDatabase _instance;
 
     /// <summary>
     /// Self-loading singleton instance loaded automatically from Resources/PowerupDatabase.
@@ -19,47 +20,48 @@ public class PowerupDatabase : ScriptableObject
     {
         get
         {
-            if (instance == null)
+            if (_instance == null)
             {
-                instance = Resources.Load<PowerupDatabase>(RESOURCE_PATH);
+                _instance = Resources.Load<PowerupDatabase>(RESOURCE_PATH);
 
-                if (instance == null)
+                if (_instance == null)
                 {
                     PowerupDatabase[] all = Resources.LoadAll<PowerupDatabase>("");
                     if (all != null && all.Length > 0)
                     {
-                        instance = all[0];
+                        _instance = all[0];
                     }
                 }
 
-                if (instance == null)
+                if (_instance == null)
                 {
                     Debug.LogError("[PowerupDatabase] PowerupDatabase asset not found in Resources! Please ensure your PowerupDatabase asset is inside 'Assets/_Game/Resources/PowerupDatabase'.");
                 }
             }
 
-            return instance;
+            return _instance;
         }
     }
 
     [Header("Powerups")]
     [Tooltip("Ordered list of power-ups displayed in the Game scene panel.")]
-    [SerializeField] private List<PowerupDataSO> powerups = new();
+    [FormerlySerializedAs("powerups")]
+    [SerializeField] private List<PowerupDataSO> _powerups = new();
 
-    public IReadOnlyList<PowerupDataSO> Powerups => powerups;
+    public IReadOnlyList<PowerupDataSO> Powerups => _powerups;
 
     /// <summary>
     /// Returns the PowerupDataSO matching the given PowerupType, or null if not found.
     /// </summary>
     public PowerupDataSO GetPowerup(PowerupType type)
     {
-        if (powerups == null) return null;
+        if (_powerups == null) return null;
 
-        for (int i = 0; i < powerups.Count; i++)
+        for (int i = 0; i < _powerups.Count; i++)
         {
-            if (powerups[i] != null && powerups[i].PowerupType == type)
+            if (_powerups[i] != null && _powerups[i].PowerupType == type)
             {
-                return powerups[i];
+                return _powerups[i];
             }
         }
 

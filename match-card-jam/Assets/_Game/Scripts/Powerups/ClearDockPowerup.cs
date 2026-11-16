@@ -31,6 +31,7 @@ public class ClearDockPowerup : PowerupBase
     private readonly List<MatchItem> _dockItems = new();
     private readonly List<Tween> _activeTweens = new();
     private LevelManager _levelManager;
+    private InputManager _inputManager;
     private Transform _boardRoot;
     private Vector3 _boardCenter;
     private int _nextLaunchIndex;
@@ -42,6 +43,7 @@ public class ClearDockPowerup : PowerupBase
     protected override void OnDestroy()
     {
         base.OnDestroy();
+        RestoreInput();
 
         for (int i = _activeTweens.Count - 1; i >= 0; i--)
         {
@@ -62,6 +64,7 @@ public class ClearDockPowerup : PowerupBase
     protected override void OnActivate(PowerupContext context)
     {
         _levelManager = context.LevelManager;
+        _inputManager = context.InputManager;
         _boardRoot = _levelManager != null ? _levelManager.MatchItemRoot : null;
         _dockItems.Clear();
 
@@ -87,6 +90,11 @@ public class ClearDockPowerup : PowerupBase
         {
             Complete();
             return;
+        }
+
+        if (_inputManager != null)
+        {
+            _inputManager.enabled = false;
         }
 
         _boardCenter = ComputeBoardCenter(_levelManager);
@@ -137,6 +145,7 @@ public class ClearDockPowerup : PowerupBase
         if (_nextLaunchIndex >= _dockItems.Count)
         {
             _isLaunching = false;
+            RestoreInput();
             return;
         }
 
@@ -176,6 +185,15 @@ public class ClearDockPowerup : PowerupBase
                 item.SetState(MatchItem.ItemState.InPhysics);
             }
         });
+    }
+
+    private void RestoreInput()
+    {
+        if (_inputManager != null)
+        {
+            _inputManager.enabled = true;
+            _inputManager = null;
+        }
     }
 
     private static Vector3 ComputeBoardCenter(LevelManager levelManager)
