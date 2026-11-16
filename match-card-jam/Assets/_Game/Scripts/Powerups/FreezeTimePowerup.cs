@@ -61,12 +61,8 @@ public class FreezeTimePowerup : PowerupBase
         _remainingDuration = _totalDuration;
         _isRunning = true;
 
-        // 1. Audio & Haptics
+        // 1. Audio
         SoundManager.PlaySound(_freezeSound);
-        if (GameData.IsHapticEnabled)
-        {
-            Taptic.Light();
-        }
 
         // 2. Ensure overlay visuals never block gameplay clicks
         PrepareVisuals();

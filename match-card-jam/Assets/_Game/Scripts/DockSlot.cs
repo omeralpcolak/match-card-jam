@@ -18,6 +18,9 @@ public class DockSlot : MonoBehaviour
     [Tooltip("Target scale for the card when seated in the dock.")]
     [SerializeField] private Vector3 targetScale = new Vector3(0.75f, 0.75f, 0.75f);
 
+    [Tooltip("Scale multiplier reached at the peak of the jump arc for a juicy pop.")]
+    [SerializeField] private float flightPeakScaleMultiplier = 1.22f;
+
     private MatchItem currentItem;
 
     public int SlotIndex
@@ -31,7 +34,8 @@ public class DockSlot : MonoBehaviour
     public bool IsEmpty => currentItem == null;
 
     /// <summary>
-    /// Parents the incoming item to MatchItemRoot and animates placement with a jump tween.
+    /// Parents the incoming item to MatchItemRoot and animates placement with a juicy arc,
+    /// mid-air scale pop, and landing bounce.
     /// </summary>
     public void PlaceItemWithJump(MatchItem item, float duration, float jumpPower, Ease ease, Action onComplete = null)
     {
@@ -42,16 +46,23 @@ public class DockSlot : MonoBehaviour
         item.transform.SetParent(targetParent, true);
         item.transform.DOKill();
 
+        float riseDuration = duration * 0.42f;
+        float fallDuration = duration - riseDuration;
+        Vector3 peakScale = targetScale * flightPeakScaleMultiplier;
+
         Sequence seq = DOTween.Sequence();
 
-        // 1. Jump to local center
+        // 1. Jump to local center along arc
         seq.Join(item.transform.DOLocalJump(Vector3.zero, jumpPower, 1, duration).SetEase(ease));
 
-        // 2. Smoothly align rotation to zero
-        seq.Join(item.transform.DOLocalRotate(Vector3.zero, duration).SetEase(ease));
+        // 2. Align rotation with subtle snappy overshoot
+        seq.Join(item.transform.DOLocalRotate(Vector3.zero, duration).SetEase(Ease.OutBack, 1.15f));
 
-        // 3. Scale to target size
-        seq.Join(item.transform.DOScale(targetScale, duration).SetEase(ease));
+        // 3. Mid-air scale pop (swell up on lift, snap to targetScale on landing)
+        Sequence scaleSeq = DOTween.Sequence();
+        scaleSeq.Append(item.transform.DOScale(peakScale, riseDuration).SetEase(Ease.OutQuad));
+        scaleSeq.Append(item.transform.DOScale(targetScale, fallDuration).SetEase(Ease.InQuad));
+        seq.Join(scaleSeq);
 
         seq.OnComplete(() =>
         {
@@ -67,9 +78,9 @@ public class DockSlot : MonoBehaviour
     }
 
     /// <summary>
-    /// Smoothly slides an existing card into this new slot when items shift or gaps close.
+    /// Smoothly slides an existing card into this new slot with a snappy spring ease when items shift or gaps close.
     /// </summary>
-    public void SlideItemToHere(MatchItem item, float duration, Ease ease = Ease.OutQuad, Action onComplete = null)
+    public void SlideItemToHere(MatchItem item, float duration, Ease ease = Ease.OutBack, Action onComplete = null)
     {
         currentItem = item;
 
@@ -78,9 +89,9 @@ public class DockSlot : MonoBehaviour
         item.transform.DOKill();
 
         Sequence seq = DOTween.Sequence();
-        seq.Join(item.transform.DOLocalMove(Vector3.zero, duration).SetEase(ease));
-        seq.Join(item.transform.DOLocalRotate(Vector3.zero, duration).SetEase(ease));
-        seq.Join(item.transform.DOScale(targetScale, duration).SetEase(ease));
+        seq.Join(item.transform.DOLocalMove(Vector3.zero, duration).SetEase(Ease.OutBack, 1.1f));
+        seq.Join(item.transform.DOLocalRotate(Vector3.zero, duration).SetEase(Ease.OutQuad));
+        seq.Join(item.transform.DOScale(targetScale, duration).SetEase(Ease.OutQuad));
 
         seq.OnComplete(() =>
         {

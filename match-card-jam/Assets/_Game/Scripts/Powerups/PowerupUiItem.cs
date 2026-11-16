@@ -18,6 +18,9 @@ public class PowerupUiItem : MonoBehaviour
     [Tooltip("Image displaying the power-up icon when unlocked.")]
     [SerializeField] private Image _iconImage;
 
+    [Tooltip("CanvasGroup on IconArea (parent of IconImage and Amount) used to show/hide and dim when unavailable.")]
+    [SerializeField] private CanvasGroup _iconCanvasGroup;
+
     [Tooltip("Image overlay shown when the power-up is locked.")]
     [SerializeField] private Image _lockedImage;
 
@@ -28,8 +31,12 @@ public class PowerupUiItem : MonoBehaviour
     [Tooltip("Optional text displaying the remaining charge count when unlocked.")]
     [SerializeField] private TextMeshProUGUI _countText;
 
-    [Header("Locked Shake Settings")]
-    [Tooltip("Duration of the horizontal shake when clicked while locked.")]
+    [Header("Availability & Shake Settings")]
+    [Tooltip("Alpha applied to IconCanvasGroup when unlocked but currently unavailable.")]
+    [Range(0.1f, 1f)]
+    [SerializeField] private float _unavailableAlpha = 0.45f;
+
+    [Tooltip("Duration of the horizontal shake when clicked while locked or unavailable.")]
     [SerializeField] private float _shakeDuration = 0.35f;
 
     [Tooltip("Horizontal shake amplitude in UI units.")]
@@ -39,9 +46,10 @@ public class PowerupUiItem : MonoBehaviour
     [SerializeField] private int _shakeVibrato = 14;
 
     private PowerupDataSO _data;
-    private Action<PowerupDataSO> _onClicked;
+    private Action<PowerupUiItem> _onClicked;
     private bool _isUnlocked;
-    private Tween _shakeTween;
+    private Tween _lockedShakeTween;
+    private Tween _iconShakeTween;
 
     public PowerupDataSO Data => _data;
 
@@ -52,14 +60,15 @@ public class PowerupUiItem : MonoBehaviour
             _button.onClick.RemoveListener(HandleClick);
         }
 
-        _shakeTween?.Kill();
+        _lockedShakeTween?.Kill();
+        _iconShakeTween?.Kill();
     }
 
     /// <summary>
     /// Initializes this UI item with power-up configuration and click callback.
     /// Called explicitly by PowerupManager immediately after instantiation.
     /// </summary>
-    public void Initialize(PowerupDataSO powerupData, Action<PowerupDataSO> clickCallback)
+    public void Initialize(PowerupDataSO powerupData, Action<PowerupUiItem> clickCallback)
     {
         _data = powerupData;
         _onClicked = clickCallback;
@@ -67,6 +76,11 @@ public class PowerupUiItem : MonoBehaviour
         if (_button == null)
         {
             _button = GetComponent<Button>();
+        }
+
+        if (_iconCanvasGroup == null && _iconImage != null)
+        {
+            _iconCanvasGroup = _iconImage.GetComponentInParent<CanvasGroup>();
         }
 
         if (_button != null)
@@ -97,7 +111,11 @@ public class PowerupUiItem : MonoBehaviour
             _lockedImage.gameObject.SetActive(!_isUnlocked);
         }
 
-        if (_iconImage != null)
+        if (_iconCanvasGroup != null)
+        {
+            _iconCanvasGroup.gameObject.SetActive(_isUnlocked);
+        }
+        else if (_iconImage != null)
         {
             _iconImage.gameObject.SetActive(_isUnlocked);
         }
@@ -117,6 +135,34 @@ public class PowerupUiItem : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Dims or brightens the icon CanvasGroup based on whether this power-up can currently be activated.
+    /// </summary>
+    public void SetAvailable(bool isAvailable)
+    {
+        if (_iconCanvasGroup == null || !_isUnlocked) return;
+
+        _iconCanvasGroup.alpha = isAvailable ? 1f : _unavailableAlpha;
+    }
+
+    /// <summary>
+    /// Plays a horizontal shake on the icon and triggers a warning haptic when clicked while unavailable.
+    /// </summary>
+    public void PlayUnavailableShake()
+    {
+        if (GameData.IsHapticEnabled)
+        {
+            Taptic.Warning();
+        }
+
+        if (_iconImage == null) return;
+
+        _iconShakeTween?.Complete();
+        _iconShakeTween = _iconImage.rectTransform
+            .DOShakeAnchorPos(_shakeDuration, new Vector2(_shakeStrength, 0f), _shakeVibrato, randomness: 0f, snapping: false, fadeOut: true)
+            .SetUpdate(true);
+    }
+
     private void HandleClick()
     {
         if (_data == null) return;
@@ -127,16 +173,21 @@ public class PowerupUiItem : MonoBehaviour
             return;
         }
 
-        _onClicked?.Invoke(_data);
+        _onClicked?.Invoke(this);
     }
 
     private void PlayLockedShake()
     {
+        if (GameData.IsHapticEnabled)
+        {
+            Taptic.Warning();
+        }
+
         if (_lockedImage == null) return;
 
         // Complete any active shake first so repeated clicks do not drift the resting position.
-        _shakeTween?.Complete();
-        _shakeTween = _lockedImage.rectTransform
+        _lockedShakeTween?.Complete();
+        _lockedShakeTween = _lockedImage.rectTransform
             .DOShakeAnchorPos(_shakeDuration, new Vector2(_shakeStrength, 0f), _shakeVibrato, randomness: 0f, snapping: false, fadeOut: true)
             .SetUpdate(true);
     }

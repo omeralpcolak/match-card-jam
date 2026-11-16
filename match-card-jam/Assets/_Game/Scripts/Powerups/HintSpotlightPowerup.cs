@@ -60,12 +60,8 @@ public class HintSpotlightPowerup : PowerupBase
             return;
         }
 
-        // 1. Audio & Haptics
+        // 1. Audio
         SoundManager.PlaySound(_hintSound);
-        if (GameData.IsHapticEnabled)
-        {
-            Taptic.Light();
-        }
 
         // 2. Spawn optional world indicators
         SpawnIndicators();

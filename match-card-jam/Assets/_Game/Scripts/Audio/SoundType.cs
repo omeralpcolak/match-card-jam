@@ -15,7 +15,8 @@ public enum SoundType
     PowerupHint = 6,
     PowerupShuffle = 7,
     PowerupMagnet = 8,
-    PowerupClearDock = 9
+    PowerupClearDock = 9,
+    ProgressBarHit = 10
 }
 
 /// <summary>

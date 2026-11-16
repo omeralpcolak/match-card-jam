@@ -27,11 +27,13 @@ public class MatchItem : MonoBehaviour
     [SerializeField] private float physicsWakeRadius = 2.5f;
 
     private ItemState currentState = ItemState.InPhysics;
+    private Vector3 initialScale = Vector3.one;
     private bool isInitialized = false;
 
     public int Id => id;
     public string ItemKey => string.IsNullOrEmpty(itemKey) ? id.ToString() : itemKey;
     public ItemState CurrentState => currentState;
+    public Vector3 InitialScale => initialScale;
     public MatchItemOutline Outline => outline;
     public Collider ItemCollider => itemCollider;
     public Rigidbody Rb => rb;
@@ -52,6 +54,8 @@ public class MatchItem : MonoBehaviour
     public void Initialize()
     {
         if (isInitialized) return;
+
+        initialScale = transform.localScale;
 
         // 1. Bind physics and collider components
         if (rb == null) rb = GetComponent<Rigidbody>() ?? GetComponentInChildren<Rigidbody>();

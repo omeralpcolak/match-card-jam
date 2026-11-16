@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// Manages spawning PowerupUiItem buttons from PowerupDatabase (sorted by UnlockLevel)
-/// and coordinates power-up activation in the Game scene.
+/// and coordinates power-up activation and availability visuals in the Game scene.
 /// Initialized explicitly by GameManager; avoids Awake/Start/OnEnable/OnDisable hooks.
 /// </summary>
 public class PowerupManager : MonoBehaviour
@@ -21,10 +21,14 @@ public class PowerupManager : MonoBehaviour
     private readonly List<PowerupUiItem> _spawnedItems = new();
     private readonly HashSet<PowerupType> _activeTypes = new();
     private readonly List<PowerupBase> _activeInstances = new();
+    private DockManager _boundDockManager;
 
     private void OnDestroy()
     {
         GameData.OnPowerupCountChanged -= HandlePowerupCountChanged;
+        DockManager.OnItemsMatched -= HandleItemsMatched;
+        LevelManager.OnStateChanged -= HandleLevelStateChanged;
+        UnbindDockEvents();
         CleanupActivePowerups();
     }
 
@@ -37,6 +41,13 @@ public class PowerupManager : MonoBehaviour
         GameData.OnPowerupCountChanged -= HandlePowerupCountChanged;
         GameData.OnPowerupCountChanged += HandlePowerupCountChanged;
 
+        DockManager.OnItemsMatched -= HandleItemsMatched;
+        DockManager.OnItemsMatched += HandleItemsMatched;
+
+        LevelManager.OnStateChanged -= HandleLevelStateChanged;
+        LevelManager.OnStateChanged += HandleLevelStateChanged;
+
+        BindDockEvents();
         BuildPowerupUI();
     }
 
@@ -79,10 +90,12 @@ public class PowerupManager : MonoBehaviour
             item.Initialize(sortedList[i], HandlePowerupClicked);
             _spawnedItems.Add(item);
         }
+
+        RefreshAvailability();
     }
 
     /// <summary>
-    /// Refreshes all spawned PowerupUiItem visuals.
+    /// Refreshes all spawned PowerupUiItem visuals and availability states.
     /// </summary>
     public void RefreshAllItems()
     {
@@ -93,6 +106,61 @@ public class PowerupManager : MonoBehaviour
                 _spawnedItems[i].Refresh();
             }
         }
+
+        RefreshAvailability();
+    }
+
+    /// <summary>
+    /// Updates each unlocked button's dimmed/active visual based on CanActivate().
+    /// </summary>
+    public void RefreshAvailability()
+    {
+        for (int i = 0; i < _spawnedItems.Count; i++)
+        {
+            PowerupUiItem uiItem = _spawnedItems[i];
+            if (uiItem == null || uiItem.Data == null) continue;
+
+            PowerupDataSO data = uiItem.Data;
+            bool available = GameData.IsPowerupUnlocked(data.PowerupType)
+                             && GameData.GetPowerupCount(data.PowerupType) > 0
+                             && !_activeTypes.Contains(data.PowerupType)
+                             && data.PowerupPrefab != null
+                             && data.PowerupPrefab.CanActivate(BuildContext(data));
+
+            uiItem.SetAvailable(available);
+        }
+    }
+
+    private void BindDockEvents()
+    {
+        UnbindDockEvents();
+
+        _boundDockManager = ResolveDockManager();
+        if (_boundDockManager != null)
+        {
+            _boundDockManager.OnItemAddedToDock += HandleItemAddedToDock;
+            _boundDockManager.OnDockSettled += HandleDockSettled;
+        }
+    }
+
+    private void UnbindDockEvents()
+    {
+        if (_boundDockManager != null)
+        {
+            _boundDockManager.OnItemAddedToDock -= HandleItemAddedToDock;
+            _boundDockManager.OnDockSettled -= HandleDockSettled;
+            _boundDockManager = null;
+        }
+    }
+
+    private DockManager ResolveDockManager()
+    {
+        GameManager gm = GameManager.Instance;
+        LevelManager lm = gm != null && gm.CurrentLevelManager != null
+            ? gm.CurrentLevelManager
+            : LevelManager.Instance;
+
+        return lm != null ? lm.DockManager : DockManager.Instance;
     }
 
     private void ClearSpawnedItems()
@@ -115,36 +183,58 @@ public class PowerupManager : MonoBehaviour
                 item.Refresh();
             }
         }
+
+        RefreshAvailability();
     }
 
-    private void HandlePowerupClicked(PowerupDataSO data)
+    private void HandleItemAddedToDock(MatchItem item, int slotIndex)
     {
-        if (data == null) return;
+        RefreshAvailability();
+    }
 
-        if (!GameData.IsPowerupUnlocked(data.PowerupType)) return;
+    private void HandleDockSettled()
+    {
+        RefreshAvailability();
+    }
 
-        if (_activeTypes.Contains(data.PowerupType))
+    private void HandleItemsMatched(int itemId, Vector3 matchPos)
+    {
+        RefreshAvailability();
+    }
+
+    private void HandleLevelStateChanged(LevelManager.LevelState newState)
+    {
+        if (_boundDockManager == null)
         {
-            Debug.Log($"[PowerupManager] {data.PowerupType} is already active.");
-            return;
+            BindDockEvents();
         }
 
-        if (data.PowerupPrefab == null)
+        RefreshAvailability();
+    }
+
+    private void HandlePowerupClicked(PowerupUiItem uiItem)
+    {
+        if (uiItem == null || uiItem.Data == null) return;
+
+        PowerupDataSO data = uiItem.Data;
+        if (!GameData.IsPowerupUnlocked(data.PowerupType)) return;
+
+        if (_activeTypes.Contains(data.PowerupType) || data.PowerupPrefab == null)
         {
-            Debug.LogWarning($"[PowerupManager] No PowerupPrefab assigned on PowerupDataSO for {data.PowerupType}.");
+            uiItem.PlayUnavailableShake();
             return;
         }
 
         PowerupContext context = BuildContext(data);
         if (!data.PowerupPrefab.CanActivate(context))
         {
-            Debug.Log($"[PowerupManager] {data.PowerupType} cannot be activated right now.");
+            uiItem.PlayUnavailableShake();
             return;
         }
 
         if (!GameData.TryUsePowerup(data.PowerupType))
         {
-            Debug.Log($"[PowerupManager] {data.PowerupType} has 0 charges remaining.");
+            uiItem.PlayUnavailableShake();
             return;
         }
 
@@ -179,12 +269,14 @@ public class PowerupManager : MonoBehaviour
         _activeInstances.Add(instance);
 
         instance.Execute(context, () => HandlePowerupFinished(data.PowerupType, instance));
+        RefreshAvailability();
     }
 
     private void HandlePowerupFinished(PowerupType type, PowerupBase instance)
     {
         _activeTypes.Remove(type);
         _activeInstances.Remove(instance);
+        RefreshAvailability();
     }
 
     private void CleanupActivePowerups()

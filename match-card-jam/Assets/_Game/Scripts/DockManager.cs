@@ -86,6 +86,7 @@ public class DockManager : MonoBehaviour
     }
 
     public event Action<MatchItem, int> OnItemAddedToDock;
+    public event Action OnDockSettled;
 
     private void Awake()
     {
@@ -165,6 +166,7 @@ public class DockManager : MonoBehaviour
         {
             activeMovingCount = 0;
             CheckAndResolveMatches();
+            OnDockSettled?.Invoke();
         }
     }
 

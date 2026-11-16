@@ -272,7 +272,7 @@ public class LevelManager : MonoBehaviour
         if (currentState != LevelState.Playing) return;
 
         remainingItemCount = Mathf.Max(0, remainingItemCount - 3);
-        progressionUIManager?.UpdateProgress(remainingItemCount, totalItemCount);
+        progressionUIManager?.PlayMatchFlyAndUpdateProgress(matchPos, remainingItemCount, totalItemCount);
         OnItemCountChanged?.Invoke(remainingItemCount, totalItemCount);
 
         // Victory check (if no remaining items to collect on board)

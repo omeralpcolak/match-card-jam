@@ -58,12 +58,8 @@ public class ShuffleFanPowerup : PowerupBase
             return;
         }
 
-        // 1. Audio & Haptics
+        // 1. Audio
         SoundManager.PlaySound(_shuffleSound);
-        if (GameData.IsHapticEnabled)
-        {
-            Taptic.Medium();
-        }
 
         // 2. Compute board centroid and spawn VFX preserving prefab rotation (e.g. X = -90)
         Vector3 boardCenter = ComputeBoardCenter(_targetItems);

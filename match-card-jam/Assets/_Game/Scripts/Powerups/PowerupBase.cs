@@ -36,6 +36,11 @@ public abstract class PowerupBase : MonoBehaviour
         _onFinished = onFinished;
         _isCompleted = false;
 
+        if (GameData.IsHapticEnabled)
+        {
+            Taptic.Light();
+        }
+
         OnActivate(context);
     }
 
