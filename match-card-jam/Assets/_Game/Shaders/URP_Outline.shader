@@ -4,6 +4,7 @@ Shader "Custom/URP_Outline"
     {
         _OutlineColor ("Outline Color", Color) = (0, 0, 0, 1)
         _OutlineWidth ("Outline Width", Range(0.001, 0.03)) = 0.005
+        [Toggle] _UseRadialExtrusion ("Use 3D Radial Extrusion", Float) = 0
     }
 
     SubShader
@@ -43,35 +44,34 @@ Shader "Custom/URP_Outline"
             CBUFFER_START(UnityPerMaterial)
                 float4 _OutlineColor;
                 float _OutlineWidth;
+                float _UseRadialExtrusion;
             CBUFFER_END
 
             Varyings vert(Attributes input)
             {
                 Varyings output;
 
-                // 1. Kartın kalınlık (Y) eksenindeki genişlemeyi sıfırla!
-                // Kart sadece X ve Z (çevre ve yuvarlak köşeler) boyunca genişlemelidir.
-                // Eğer Y genişlerse kart balon gibi şişer ve altındaki/üstündeki kartların içine saplanır.
-                float3 normal = input.normalOS;
-                normal.y = 0.0;
-
-                float len = length(normal.xz);
-                if (len > 0.001)
+                float3 extrudeDir;
+                if (_UseRadialExtrusion > 0.5)
                 {
-                    normal.xz /= len;
+                    // Full 3D radial extrusion from object center: prevents hard-edge corner splitting on 3D dice/cubes
+                    float posLen = length(input.positionOS.xyz);
+                    extrudeDir = (posLen > 0.0001) ? (input.positionOS.xyz / posLen) : float3(0, 0, 0);
                 }
                 else
                 {
-                    normal = float3(0, 0, 0);
+                    // Flat XZ-plane normal extrusion for cards
+                    extrudeDir = float3(input.normalOS.x, 0.0, input.normalOS.z);
+                    float len = length(extrudeDir.xz);
+                    extrudeDir = (len > 0.001) ? (extrudeDir / len) : float3(0, 0, 0);
                 }
 
-                // 2. Kamera mesafesine göre genişlik telafisi
+                // Distance-compensated outline width
                 float3 posWS = TransformObjectToWorld(input.positionOS.xyz);
                 float dist = length(posWS - _WorldSpaceCameraPos.xyz);
                 float offset = _OutlineWidth * dist;
 
-                // 3. Yalnızca kartın çevresi boyunca dışa doğru genişlet
-                float3 extrudedPosOS = input.positionOS.xyz + normal * offset;
+                float3 extrudedPosOS = input.positionOS.xyz + extrudeDir * offset;
 
                 output.positionCS = TransformObjectToHClip(extrudedPosOS);
                 return output;

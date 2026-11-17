@@ -309,6 +309,11 @@ MonoBehaviour:
   outline: {fileID: 5941314718439243221}
   rb: {fileID: 7151418577271576956}
   itemCollider: {fileID: 5334675223645774441}
+  physicsWakeRadius: 3
+  dockScaleMultiplier: 1
+  isMystery: 0
+  mysteryMaterial: {fileID: 2100000, guid: 8b2c7c535822f445e82d63dfa0269c49, type: 2}
+  mysteryRevealVfxPrefab: {fileID: 416130605540477703, guid: cfbbf8567f0324f0e9921c70937488b5, type: 3}
 --- !u!114 &5941314718439243221
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -351,5 +356,5 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 80
+  m_Constraints: 0
   m_CollisionDetection: 0
