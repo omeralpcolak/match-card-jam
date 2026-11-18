@@ -120,7 +120,14 @@ public class InputManager : MonoBehaviour
                 MatchItem itemUnderPointer = GetItemAt(screenPos);
                 if (itemUnderPointer != null && itemUnderPointer.CurrentState == MatchItem.ItemState.InPhysics)
                 {
-                    ConfirmPick(itemUnderPointer);
+                    if (itemUnderPointer.IsFrozen)
+                    {
+                        itemUnderPointer.PlayFrozenFeedback();
+                    }
+                    else
+                    {
+                        ConfirmPick(itemUnderPointer);
+                    }
                 }
             }
 
@@ -141,6 +148,19 @@ public class InputManager : MonoBehaviour
         }
 
         MatchItem hitItem = GetItemAt(screenPos);
+
+        if (hitItem != null && hitItem.IsFrozen)
+        {
+            if (Pointer.current != null && Pointer.current.press.wasPressedThisFrame)
+            {
+                hitItem.PlayFrozenFeedback();
+            }
+            if (currentlySelectedItem != null)
+            {
+                ResetCurrentSelection();
+            }
+            return;
+        }
 
         if (hitItem != null && (hitItem.CurrentState == MatchItem.ItemState.InPhysics || hitItem.CurrentState == MatchItem.ItemState.Selected))
         {
@@ -185,6 +205,12 @@ public class InputManager : MonoBehaviour
     private void ConfirmPick(MatchItem item)
     {
         if (item == null) return;
+
+        if (item.IsFrozen)
+        {
+            item.PlayFrozenFeedback();
+            return;
+        }
 
         // Cancel pickup if dock is full
         if (DockManager.Instance != null && !DockManager.Instance.HasEmptySlot)

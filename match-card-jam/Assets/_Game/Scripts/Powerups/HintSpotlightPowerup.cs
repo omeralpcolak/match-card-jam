@@ -214,7 +214,7 @@ public class HintSpotlightPowerup : PowerupBase
         for (int i = 0; i < boardItems.Count; i++)
         {
             MatchItem item = boardItems[i];
-            if (item == null || !item.gameObject.activeInHierarchy || item.CurrentState != MatchItem.ItemState.InPhysics)
+            if (item == null || !item.gameObject.activeInHierarchy || item.CurrentState != MatchItem.ItemState.InPhysics || item.IsFrozen)
             {
                 continue;
             }

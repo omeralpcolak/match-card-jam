@@ -34,6 +34,9 @@ public class LevelGeneratorWindow : EditorWindow
     private int _dockCapacity = 7;
     private bool _useTimer = true;
     private float _timeLimit = 100f;
+    private int _mysteryItemCount = 0;
+    private int _frozenItemCount = 0;
+    private int _freezeLayers = 3;
     private bool _addToLevelDatabase = true;
 
     // Layout Settings
@@ -128,6 +131,12 @@ public class LevelGeneratorWindow : EditorWindow
             _timeLimit = Mathf.Max(10f, EditorGUILayout.FloatField("Time Limit (sec)", _timeLimit));
         }
 
+        _mysteryItemCount = Mathf.Max(0, EditorGUILayout.IntField("Mystery Items", _mysteryItemCount));
+        _frozenItemCount = Mathf.Max(0, EditorGUILayout.IntField("Frozen Items", _frozenItemCount));
+        if (_frozenItemCount > 0)
+        {
+            _freezeLayers = Mathf.Max(1, EditorGUILayout.IntField("Freeze Layers", _freezeLayers));
+        }
         _addToLevelDatabase = EditorGUILayout.Toggle("Add to LevelDatabase", _addToLevelDatabase);
 
         EditorGUILayout.EndVertical();
@@ -257,8 +266,13 @@ public class LevelGeneratorWindow : EditorWindow
 
     private void DrawActionsSection()
     {
+        if (EditorApplication.isPlaying)
+        {
+            EditorGUILayout.HelpBox("Exit Play Mode before generating or previewing level prefabs.", MessageType.Warning);
+        }
+
         CalculateTotals(out _, out _, out int totalItems);
-        GUI.enabled = _templatePrefab != null && totalItems > 0;
+        GUI.enabled = !EditorApplication.isPlaying && _templatePrefab != null && totalItems > 0;
 
         GUI.backgroundColor = new Color(0.35f, 0.85f, 0.45f);
         if (GUILayout.Button($"Generate Level-{_levelNumber}.prefab", GUILayout.Height(36)))
@@ -285,6 +299,12 @@ public class LevelGeneratorWindow : EditorWindow
 
     private void GenerateLevelPrefab()
     {
+        if (EditorApplication.isPlaying)
+        {
+            EditorUtility.DisplayDialog("Play Mode Active", "Please exit Play Mode before generating a level prefab.", "OK");
+            return;
+        }
+
         if (!Directory.Exists(LEVELS_OUTPUT_DIR))
         {
             Directory.CreateDirectory(LEVELS_OUTPUT_DIR);
@@ -447,10 +467,86 @@ public class LevelGeneratorWindow : EditorWindow
         }
 
         ShuffleList(spawnedTransforms);
+        ApplyRandomMysteryItems(spawnedTransforms, _mysteryItemCount);
+        ApplyRandomFrozenItems(spawnedTransforms, _frozenItemCount, _freezeLayers);
         ApplyLayoutPositions(spawnedTransforms);
         levelManager.ScanBoardItems();
 
         return instance;
+    }
+
+    private void ApplyRandomMysteryItems(List<Transform> items, int mysteryCount)
+    {
+        if (mysteryCount <= 0 || items == null || items.Count == 0) return;
+
+        Material cardMysteryMat = AssetDatabase.LoadAssetAtPath<Material>(MysteryAssetGenerator.CARD_MYSTERY_MAT_PATH);
+        Material diceMysteryMat = AssetDatabase.LoadAssetAtPath<Material>(MysteryAssetGenerator.DICE_MYSTERY_MAT_PATH);
+
+        int count = Mathf.Min(mysteryCount, items.Count);
+        for (int i = 0; i < count; i++)
+        {
+            MatchItem matchItem = items[i] != null ? items[i].GetComponent<MatchItem>() : null;
+            if (matchItem == null) continue;
+
+            bool isDice = matchItem.Id >= 300 ||
+                          (!string.IsNullOrEmpty(matchItem.ItemKey) && matchItem.ItemKey.IndexOf("Dice", StringComparison.OrdinalIgnoreCase) >= 0) ||
+                          matchItem.gameObject.name.IndexOf("Dice", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            Material mat = isDice ? diceMysteryMat : cardMysteryMat;
+
+            SerializedObject so = new SerializedObject(matchItem);
+            so.FindProperty("isMystery").boolValue = true;
+            if (mat != null)
+            {
+                so.FindProperty("mysteryMaterial").objectReferenceValue = mat;
+            }
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+    }
+
+    private void ApplyRandomFrozenItems(List<Transform> items, int frozenCount, int layers)
+    {
+        if (frozenCount <= 0 || items == null || items.Count == 0) return;
+
+        Material iceMat = AssetDatabase.LoadAssetAtPath<Material>(IceAssetGenerator.ICE_MAT_PATH);
+
+        // Prefer non-mystery items first (from the end of the shuffled list)
+        int remaining = Mathf.Min(frozenCount, items.Count);
+        for (int i = items.Count - 1; i >= 0 && remaining > 0; i--)
+        {
+            MatchItem matchItem = items[i] != null ? items[i].GetComponent<MatchItem>() : null;
+            if (matchItem == null) continue;
+
+            SerializedObject so = new SerializedObject(matchItem);
+            if (so.FindProperty("isMystery").boolValue) continue;
+
+            ApplyFrozenProperties(so, layers, iceMat);
+            remaining--;
+        }
+
+        // If more frozen items requested than non-mystery items available, allow overlap
+        for (int i = 0; i < items.Count && remaining > 0; i++)
+        {
+            MatchItem matchItem = items[i] != null ? items[i].GetComponent<MatchItem>() : null;
+            if (matchItem == null) continue;
+
+            SerializedObject so = new SerializedObject(matchItem);
+            if (so.FindProperty("isFrozen").boolValue) continue;
+
+            ApplyFrozenProperties(so, layers, iceMat);
+            remaining--;
+        }
+    }
+
+    private static void ApplyFrozenProperties(SerializedObject so, int layers, Material iceMat)
+    {
+        so.FindProperty("isFrozen").boolValue = true;
+        so.FindProperty("freezeLayers").intValue = Mathf.Max(1, layers);
+        if (iceMat != null)
+        {
+            so.FindProperty("iceMaterial").objectReferenceValue = iceMat;
+        }
+        so.ApplyModifiedPropertiesWithoutUndo();
     }
 
     private void ApplyLayoutPositions(List<Transform> items)

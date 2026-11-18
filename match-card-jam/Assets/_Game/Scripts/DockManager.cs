@@ -52,23 +52,18 @@ public class DockManager : MonoBehaviour
     // Active movement tracking and lock controls
     private int activeMovingCount = 0;
     private bool isResolvingMatch = false;
+    private readonly Queue<MatchItem> pendingItems = new();
 
     public int Capacity => capacity;
     public IReadOnlyList<DockSlot> Slots => slots;
     public bool IsResolvingMatch => isResolvingMatch;
-    public int ActiveMovingCount => activeMovingCount;
+    public int ActiveMovingCount => activeMovingCount + pendingItems.Count;
 
     public bool HasEmptySlot
     {
         get
         {
-            if (isResolvingMatch) return false;
-
-            for (int i = 0; i < slots.Count; i++)
-            {
-                if (slots[i] != null && slots[i].IsEmpty) return true;
-            }
-            return false;
+            return (CurrentItemCount + pendingItems.Count) < capacity;
         }
     }
 
@@ -132,8 +127,24 @@ public class DockManager : MonoBehaviour
     /// </summary>
     public bool TryAddItem(MatchItem item)
     {
-        if (item == null || isResolvingMatch || !HasEmptySlot) return false;
+        if (item == null) return false;
 
+        if (isResolvingMatch)
+        {
+            if (!HasEmptySlot || pendingItems.Contains(item)) return false;
+
+            pendingItems.Enqueue(item);
+            BeginPreFlightToDock(item);
+            return true;
+        }
+
+        if (!HasEmptySlot) return false;
+
+        return PlaceItemInSlot(item);
+    }
+
+    private bool PlaceItemInSlot(MatchItem item)
+    {
         // 1. Calculate intelligent insert index
         int targetIndex = CalculateInsertIndex(item);
 
@@ -157,6 +168,40 @@ public class DockManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Starts lifting a queued item toward the dock immediately so there is zero perceived input delay
+    /// while a match resolution animation finishes.
+    /// </summary>
+    private void BeginPreFlightToDock(MatchItem item)
+    {
+        if (item == null) return;
+
+        Transform container = slotContainer != null ? slotContainer : transform;
+        Vector3 hoverTarget = container.position + Vector3.up * 0.6f;
+
+        item.transform.DOKill();
+        item.transform.DOMove(hoverTarget, moveDuration * 0.75f).SetEase(Ease.OutQuad);
+    }
+
+    private void ProcessPendingItems()
+    {
+        if (isResolvingMatch || pendingItems.Count == 0) return;
+
+        if (LevelManager.Instance != null && LevelManager.Instance.CurrentState != LevelManager.LevelState.Playing)
+        {
+            pendingItems.Clear();
+            return;
+        }
+
+        while (pendingItems.Count > 0 && !isResolvingMatch)
+        {
+            MatchItem nextItem = pendingItems.Dequeue();
+            if (nextItem == null) continue;
+
+            PlaceItemInSlot(nextItem);
+        }
+    }
+
+    /// <summary>
     /// Called when flight or slide animation finishes. Triggers match resolution when all movements settle.
     /// </summary>
     private void OnMovementFinished()
@@ -166,7 +211,7 @@ public class DockManager : MonoBehaviour
         {
             activeMovingCount = 0;
             CheckAndResolveMatches();
-            if (!isResolvingMatch)
+            if (!isResolvingMatch && activeMovingCount == 0 && pendingItems.Count == 0)
             {
                 OnDockSettled?.Invoke();
             }
@@ -276,6 +321,12 @@ public class DockManager : MonoBehaviour
         }
         else
         {
+            if (pendingItems.Count > 0)
+            {
+                ProcessPendingItems();
+                return;
+            }
+
             // No 3-item match found; check if dock is deadlocked
             CheckDockDeadlock();
 
@@ -289,7 +340,7 @@ public class DockManager : MonoBehaviour
     /// </summary>
     private void CheckDockDeadlock()
     {
-        if (activeMovingCount == 0 && CurrentItemCount >= capacity)
+        if (activeMovingCount == 0 && pendingItems.Count == 0 && CurrentItemCount >= capacity)
         {
             LevelManager.Instance?.LoseLevel(LevelManager.LoseReason.DockFull);
         }
@@ -378,7 +429,7 @@ public class DockManager : MonoBehaviour
                             isResolvingMatch = false;
                             // Check again for chained matches
                             CheckAndResolveMatches();
-                            if (!isResolvingMatch && activeMovingCount == 0)
+                            if (!isResolvingMatch && activeMovingCount == 0 && pendingItems.Count == 0)
                             {
                                 OnDockSettled?.Invoke();
                             }
@@ -394,7 +445,7 @@ public class DockManager : MonoBehaviour
         {
             isResolvingMatch = false;
             CheckAndResolveMatches();
-            if (!isResolvingMatch && activeMovingCount == 0)
+            if (!isResolvingMatch && activeMovingCount == 0 && pendingItems.Count == 0)
             {
                 OnDockSettled?.Invoke();
             }
