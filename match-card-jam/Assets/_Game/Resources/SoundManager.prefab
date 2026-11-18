@@ -110,6 +110,11 @@ MonoBehaviour:
     volume: 1
     minPitch: 0.98
     maxPitch: 1.02
+  - soundType: 13
+    clip: {fileID: 8300000, guid: 3ae6b27556b3643e59f276bece189790, type: 3}
+    volume: 1
+    minPitch: 0.98
+    maxPitch: 1.02
   musicConfigs:
   - musicType: 0
     clip: {fileID: 8300000, guid: 53fd023336ce449b0b5d199c98e04bd9, type: 3}

@@ -13,6 +13,7 @@ public static class IceAssetGenerator
 {
     public const string ICE_TEX_PATH = "Assets/_Game/Textures/T_IceOverlay.png";
     public const string ICE_MAT_PATH = "Assets/_Game/Materials/M_IceOverlay.mat";
+    public const string ICE_SHADER_NAME = "Custom/URP_IceOverlay";
 
     static IceAssetGenerator()
     {
@@ -22,7 +23,7 @@ public static class IceAssetGenerator
     private static void EnsureIceMaterialCreated()
     {
         Material existing = AssetDatabase.LoadAssetAtPath<Material>(ICE_MAT_PATH);
-        if (existing == null || existing.GetTexture("_BaseMap") == null)
+        if (existing == null || existing.shader == null || existing.shader.name != ICE_SHADER_NAME || existing.GetTexture("_BaseMap") == null)
         {
             GenerateIceMaterial();
         }
@@ -31,10 +32,10 @@ public static class IceAssetGenerator
     [MenuItem("Tools/Generate Ice Overlay Material")]
     public static void GenerateIceMaterial()
     {
-        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+        Shader shader = Shader.Find(ICE_SHADER_NAME);
         if (shader == null)
         {
-            shader = Shader.Find("Standard");
+            shader = Shader.Find("Universal Render Pipeline/Unlit");
         }
 
         Material mat = AssetDatabase.LoadAssetAtPath<Material>(ICE_MAT_PATH);
@@ -44,38 +45,36 @@ public static class IceAssetGenerator
             mat.name = Path.GetFileNameWithoutExtension(ICE_MAT_PATH);
             AssetDatabase.CreateAsset(mat, ICE_MAT_PATH);
         }
-
-        // Configure as Transparent Surface in URP Lit
-        mat.SetFloat("_Surface", 1f);
-        mat.SetFloat("_Blend", 0f);
-        mat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-        mat.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-        mat.SetFloat("_ZWrite", 0f);
-        mat.SetFloat("_AlphaClip", 0f);
-        mat.SetOverrideTag("RenderType", "Transparent");
-        mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-        mat.renderQueue = (int)RenderQueue.Transparent;
+        else if (mat.shader != shader)
+        {
+            mat.shader = shader;
+        }
 
         Texture2D iceTex = AssetDatabase.LoadAssetAtPath<Texture2D>(ICE_TEX_PATH);
         if (iceTex != null)
         {
             mat.SetTexture("_BaseMap", iceTex);
-            mat.SetTexture("_MainTex", iceTex);
         }
 
-        Color iceColor = iceTex != null ? Color.white : new Color(0.62f, 0.88f, 1f, 0.55f);
-        mat.SetColor("_BaseColor", iceColor);
-        mat.SetColor("_Color", iceColor);
-        mat.SetFloat("_Smoothness", 0.88f);
-        mat.SetFloat("_Metallic", 0.05f);
-
-        mat.EnableKeyword("_EMISSION");
-        mat.SetColor("_EmissionColor", new Color(0.16f, 0.36f, 0.52f));
+        mat.SetColor("_IceColor", new Color(0.68f, 0.92f, 1f, 1f));
+        mat.SetColor("_RimColor", new Color(0.94f, 0.99f, 1f, 1f));
+        mat.SetFloat("_RimPower", 2.0f);
+        mat.SetFloat("_RimIntensity", 1.2f);
+        mat.SetFloat("_CenterAlpha", 0.22f);
+        mat.SetFloat("_TextureAlpha", 0.62f);
+        mat.SetFloat("_ShimmerSpeed", 0.85f);
+        mat.SetFloat("_ShimmerIntensity", 0.5f);
+        mat.SetFloat("_MeltProgress", 0f);
+        mat.SetFloat("_MeltEdgeWidth", 0.075f);
+        mat.SetColor("_MeltEdgeColor", new Color(0.95f, 1f, 1f, 1f));
+        mat.SetFloat("_FlashAmount", 0f);
+        mat.SetFloat("_AlphaMultiplier", 1f);
+        mat.renderQueue = (int)RenderQueue.Transparent;
 
         EditorUtility.SetDirty(mat);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("<color=#74b9ff><b>[IceAssetGenerator]</b> Generated M_IceOverlay.mat!</color>");
+        Debug.Log("<color=#74b9ff><b>[IceAssetGenerator]</b> Generated unlit M_IceOverlay.mat with Custom/URP_IceOverlay!</color>");
     }
 }
 #endif

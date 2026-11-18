@@ -61,13 +61,22 @@ public class MatchItem : MonoBehaviour
     private MeshRenderer iceRenderer;
     private MaterialPropertyBlock icePropertyBlock;
     private Vector3 iceBaseLocalScale = Vector3.one;
-    private Vector3 iceBaseLocalPos = Vector3.zero;
     private int iceMeltAxis = 1;
-    private float iceMeshHalfLength = 0.5f;
+    private float iceBoundsMin = -0.5f;
+    private float iceBoundsMax = 0.5f;
+    private float currentMeltProgress = 0f;
+    private float currentFlashAmount = 0f;
+    private Tween iceMeltTween;
+    private Tween iceFlashTween;
     private bool subscribedToMatchEvent = false;
+    private static float lastIceMeltSoundTime = -1f;
 
-    private static readonly int BaseColorProp = Shader.PropertyToID("_BaseColor");
-    private static readonly int ColorProp = Shader.PropertyToID("_Color");
+    private static readonly int MeltProgressProp = Shader.PropertyToID("_MeltProgress");
+    private static readonly int MeltAxisProp = Shader.PropertyToID("_MeltAxis");
+    private static readonly int BoundsMinProp = Shader.PropertyToID("_BoundsMin");
+    private static readonly int BoundsMaxProp = Shader.PropertyToID("_BoundsMax");
+    private static readonly int FlashAmountProp = Shader.PropertyToID("_FlashAmount");
+    private static readonly int AlphaMultiplierProp = Shader.PropertyToID("_AlphaMultiplier");
 
     public int Id => id;
     public string ItemKey => string.IsNullOrEmpty(itemKey) ? id.ToString() : itemKey;
@@ -138,6 +147,8 @@ public class MatchItem : MonoBehaviour
     private void OnDestroy()
     {
         UnsubscribeFromMatchEvent();
+        iceMeltTween?.Kill();
+        iceFlashTween?.Kill();
     }
 
     private void InitOutline()
@@ -415,6 +426,7 @@ public class MatchItem : MonoBehaviour
         Taptic.Light();
         transform.DOKill();
         transform.DOShakeRotation(0.22f, new Vector3(0f, 0f, 10f), 14, 90f, true);
+        FlashIceShader(0.75f, 0.22f);
     }
 
     private void SubscribeToMatchEvent()
@@ -442,25 +454,39 @@ public class MatchItem : MonoBehaviour
         if (remainingFreezeLayers <= 0) return;
 
         remainingFreezeLayers--;
+        PlayIceMeltSound();
 
         if (remainingFreezeLayers > 0)
         {
             UpdateIceVisual(animate: true);
+            FlashIceShader(0.85f, 0.25f);
         }
         else
         {
             UnsubscribeFromMatchEvent();
+            iceMeltTween?.Kill();
+            FlashIceShader(1f, 0.22f);
+
             if (iceVisualObject != null)
             {
                 GameObject iceObj = iceVisualObject;
                 iceVisualObject = null;
-                iceObj.transform.DOKill();
-                iceObj.transform.DOScale(Vector3.zero, 0.2f)
-                    .SetEase(Ease.InBack)
-                    .OnComplete(() =>
+
+                iceMeltTween = DOTween.To(
+                    () => currentMeltProgress,
+                    val =>
                     {
-                        if (iceObj != null) Destroy(iceObj);
-                    });
+                        currentMeltProgress = val;
+                        ApplyIceShaderProperties();
+                    },
+                    1f,
+                    0.26f
+                )
+                .SetEase(Ease.OutQuad)
+                .OnComplete(() =>
+                {
+                    if (iceObj != null) Destroy(iceObj);
+                });
             }
 
             transform.DOKill();
@@ -497,7 +523,6 @@ public class MatchItem : MonoBehaviour
             iceVisualObject.transform.localPosition = centerOffset;
             iceVisualObject.transform.localRotation = Quaternion.identity;
             iceBaseLocalScale = Vector3.one * iceScaleMultiplier;
-            iceBaseLocalPos = centerOffset;
             iceVisualObject.transform.localScale = iceBaseLocalScale;
 
             // Choose the longest axis on cards (length) or Y axis on cubes/dice for top-to-bottom melting
@@ -518,7 +543,9 @@ public class MatchItem : MonoBehaviour
             {
                 iceMeltAxis = 0;
             }
-            iceMeshHalfLength = size[iceMeltAxis] * 0.5f * iceScaleMultiplier;
+
+            iceBoundsMin = meshBounds.min[iceMeltAxis];
+            iceBoundsMax = meshBounds.max[iceMeltAxis];
         }
         else
         {
@@ -531,9 +558,9 @@ public class MatchItem : MonoBehaviour
             iceVisualObject.transform.localPosition = Vector3.zero;
             iceVisualObject.transform.localRotation = Quaternion.identity;
             iceBaseLocalScale = Vector3.one * iceScaleMultiplier;
-            iceBaseLocalPos = Vector3.zero;
             iceMeltAxis = 1;
-            iceMeshHalfLength = 0.5f * iceScaleMultiplier;
+            iceBoundsMin = -0.5f;
+            iceBoundsMax = 0.5f;
             iceVisualObject.transform.localScale = iceBaseLocalScale;
             iceRenderer = iceVisualObject.GetComponent<MeshRenderer>();
         }
@@ -547,6 +574,10 @@ public class MatchItem : MonoBehaviour
             iceRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             iceRenderer.receiveShadows = false;
         }
+
+        currentMeltProgress = 0f;
+        currentFlashAmount = 0f;
+        ApplyIceShaderProperties();
     }
 
     private void UpdateIceVisual(bool animate)
@@ -554,36 +585,72 @@ public class MatchItem : MonoBehaviour
         if (iceVisualObject == null || iceRenderer == null) return;
 
         float ratio = Mathf.Clamp01((float)remainingFreezeLayers / Mathf.Max(1, freezeLayers));
+        float targetMelt = 1f - ratio;
 
-        // Visually recede the ice along the melt axis (e.g. 100% -> ~60% -> ~30%) so progress is unmistakable
-        Vector3 targetScale = iceBaseLocalScale;
-        targetScale[iceMeltAxis] = iceBaseLocalScale[iceMeltAxis] * ratio;
-
-        Vector3 targetPos = iceBaseLocalPos;
-        targetPos[iceMeltAxis] = iceBaseLocalPos[iceMeltAxis] - iceMeshHalfLength * (1f - ratio);
-
+        iceMeltTween?.Kill();
         if (animate)
         {
-            iceVisualObject.transform.DOKill();
-            iceVisualObject.transform.DOScale(targetScale, 0.25f).SetEase(Ease.OutBack);
-            iceVisualObject.transform.DOLocalMove(targetPos, 0.25f).SetEase(Ease.OutQuad);
+            iceMeltTween = DOTween.To(
+                () => currentMeltProgress,
+                val =>
+                {
+                    currentMeltProgress = val;
+                    ApplyIceShaderProperties();
+                },
+                targetMelt,
+                0.32f
+            ).SetEase(Ease.OutQuad);
         }
         else
         {
-            iceVisualObject.transform.localScale = targetScale;
-            iceVisualObject.transform.localPosition = targetPos;
+            currentMeltProgress = targetMelt;
+            ApplyIceShaderProperties();
         }
+    }
+
+    private void PlayIceMeltSound()
+    {
+        if (Time.unscaledTime - lastIceMeltSoundTime < 0.08f) return;
+        lastIceMeltSoundTime = Time.unscaledTime;
+        SoundManager.PlaySound(SoundType.IceMelt);
+    }
+
+    private void FlashIceShader(float peakAmount, float duration)
+    {
+        if (iceRenderer == null) return;
+
+        iceFlashTween?.Kill();
+        currentFlashAmount = peakAmount;
+        ApplyIceShaderProperties();
+
+        iceFlashTween = DOTween.To(
+            () => currentFlashAmount,
+            val =>
+            {
+                currentFlashAmount = val;
+                ApplyIceShaderProperties();
+            },
+            0f,
+            duration
+        ).SetEase(Ease.OutQuad);
+    }
+
+    private void ApplyIceShaderProperties()
+    {
+        if (iceRenderer == null) return;
 
         if (icePropertyBlock == null)
         {
             icePropertyBlock = new MaterialPropertyBlock();
         }
 
-        float alpha = Mathf.Lerp(0.82f, 1f, ratio);
-        Color tint = new Color(1f, 1f, 1f, alpha);
         iceRenderer.GetPropertyBlock(icePropertyBlock);
-        icePropertyBlock.SetColor(BaseColorProp, tint);
-        icePropertyBlock.SetColor(ColorProp, tint);
+        icePropertyBlock.SetFloat(MeltAxisProp, iceMeltAxis);
+        icePropertyBlock.SetFloat(BoundsMinProp, iceBoundsMin);
+        icePropertyBlock.SetFloat(BoundsMaxProp, iceBoundsMax);
+        icePropertyBlock.SetFloat(MeltProgressProp, currentMeltProgress);
+        icePropertyBlock.SetFloat(FlashAmountProp, currentFlashAmount);
+        icePropertyBlock.SetFloat(AlphaMultiplierProp, 1f);
         iceRenderer.SetPropertyBlock(icePropertyBlock);
     }
 

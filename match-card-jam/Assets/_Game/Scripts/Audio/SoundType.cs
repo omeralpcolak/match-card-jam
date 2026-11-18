@@ -18,7 +18,8 @@ public enum SoundType
     PowerupClearDock = 9,
     ProgressBarHit = 10,
     MysteryReveal = 11,
-    FrozenClick = 12
+    FrozenClick = 12,
+    IceMelt = 13
 }
 
 /// <summary>
