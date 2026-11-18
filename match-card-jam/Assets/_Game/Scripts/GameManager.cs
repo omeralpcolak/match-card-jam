@@ -32,11 +32,22 @@ public class GameManager : MonoBehaviour
     [Tooltip("Currently active level manager. If empty, searched in scene or instantiated from LevelDatabase.")]
     [SerializeField] private LevelManager currentLevelManager;
 
+    [Header("Bomb Explosion Settings")]
+    [Tooltip("Explosion VFX prefab spawned at screen center when 3 bombs match in the dock.")]
+    [SerializeField] private GameObject bombExplosionVfxPrefab;
+    [SerializeField] private float bombShakeDuration = 0.32f;
+    [SerializeField] private float bombShakeStrength = 0.28f;
+    [SerializeField] private float bombFailDelay = 0.45f;
+
     public InputManager InputManager => inputManager;
     public ProgressionUIManager ProgressionUIManager => progressionUIManager;
     public TimerUIManager TimerUIManager => timerUIManager;
     public PowerupManager PowerupManager => powerupManager;
     public LevelManager CurrentLevelManager => currentLevelManager;
+    public GameObject BombExplosionVfxPrefab => bombExplosionVfxPrefab;
+    public float BombShakeDuration => bombShakeDuration;
+    public float BombShakeStrength => bombShakeStrength;
+    public float BombFailDelay => bombFailDelay;
 
     private void Awake()
     {

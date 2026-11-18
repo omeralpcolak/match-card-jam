@@ -19,7 +19,8 @@ public enum SoundType
     ProgressBarHit = 10,
     MysteryReveal = 11,
     FrozenClick = 12,
-    IceMelt = 13
+    IceMelt = 13,
+    BombExplode = 14
 }
 
 /// <summary>

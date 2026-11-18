@@ -37,6 +37,7 @@ public class LevelGeneratorWindow : EditorWindow
     private int _mysteryItemCount = 0;
     private int _frozenItemCount = 0;
     private int _freezeLayers = 3;
+    private int _bombItemCount = 0;
     private bool _addToLevelDatabase = true;
 
     // Layout Settings
@@ -137,6 +138,7 @@ public class LevelGeneratorWindow : EditorWindow
         {
             _freezeLayers = Mathf.Max(1, EditorGUILayout.IntField("Freeze Layers", _freezeLayers));
         }
+        _bombItemCount = Mathf.Max(0, EditorGUILayout.IntField("Bomb Items", _bombItemCount));
         _addToLevelDatabase = EditorGUILayout.Toggle("Add to LevelDatabase", _addToLevelDatabase);
 
         EditorGUILayout.EndVertical();
@@ -469,6 +471,7 @@ public class LevelGeneratorWindow : EditorWindow
         ShuffleList(spawnedTransforms);
         ApplyRandomMysteryItems(spawnedTransforms, _mysteryItemCount);
         ApplyRandomFrozenItems(spawnedTransforms, _frozenItemCount, _freezeLayers);
+        SpawnBombItems(itemRoot, spawnedTransforms, _bombItemCount);
         ApplyLayoutPositions(spawnedTransforms);
         levelManager.ScanBoardItems();
 
@@ -547,6 +550,31 @@ public class LevelGeneratorWindow : EditorWindow
             so.FindProperty("iceMaterial").objectReferenceValue = iceMat;
         }
         so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private void SpawnBombItems(Transform itemRoot, List<Transform> spawnedTransforms, int bombCount)
+    {
+        if (bombCount <= 0 || itemRoot == null) return;
+
+        GameObject bombPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BombAssetGenerator.BOMB_PREFAB_PATH);
+        if (bombPrefab == null)
+        {
+            BombAssetGenerator.GenerateBombPrefab();
+            bombPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BombAssetGenerator.BOMB_PREFAB_PATH);
+        }
+        if (bombPrefab == null) return;
+
+        for (int i = 0; i < bombCount; i++)
+        {
+            GameObject bombGo = (GameObject)PrefabUtility.InstantiatePrefab(bombPrefab, itemRoot);
+            if (bombGo != null)
+            {
+                // Insert bombs into random middle/upper positions in the spawn list so they aren't buried at the bottom
+                int minIdx = spawnedTransforms.Count / 3;
+                int insertIdx = UnityEngine.Random.Range(minIdx, spawnedTransforms.Count + 1);
+                spawnedTransforms.Insert(insertIdx, bombGo.transform);
+            }
+        }
     }
 
     private void ApplyLayoutPositions(List<Transform> items)

@@ -50,6 +50,10 @@ public class MatchItem : MonoBehaviour
     [Tooltip("Translucent ice material used for the frozen overlay cube. Auto-assigned in Editor if left empty.")]
     [SerializeField] private Material iceMaterial;
 
+    [Header("Hazard Settings")]
+    [Tooltip("If true, this item is a Bomb hazard: matching 3 in the dock fails the level, and it is excluded from win-condition counts.")]
+    [SerializeField] private bool isBomb = false;
+
     private ItemState currentState = ItemState.InPhysics;
     private Vector3 initialScale = Vector3.one;
     private bool isInitialized = false;
@@ -86,6 +90,7 @@ public class MatchItem : MonoBehaviour
     public bool IsMystery => isMystery;
     public bool IsRevealed => isRevealed;
     public bool IsFrozen => remainingFreezeLayers > 0;
+    public bool IsBomb => isBomb;
     public int RemainingFreezeLayers => remainingFreezeLayers;
     public MatchItemOutline Outline => outline;
     public Collider ItemCollider => itemCollider;
@@ -129,8 +134,8 @@ public class MatchItem : MonoBehaviour
         // 2. Locate and initialize outline component
         InitOutline();
 
-        // 3. Apply mystery visual at runtime only (never bake into prefab in Edit Mode)
-        if (Application.isPlaying && isMystery && !isRevealed)
+        // 3. Apply mystery visual at runtime only (never bake into prefab in Edit Mode; bombs are never mystery)
+        if (Application.isPlaying && isMystery && !isBomb && !isRevealed)
         {
             ApplyMysteryVisual();
         }

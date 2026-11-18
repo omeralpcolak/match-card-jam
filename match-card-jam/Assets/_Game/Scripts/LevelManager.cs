@@ -23,7 +23,8 @@ public class LevelManager : MonoBehaviour
     public enum LoseReason
     {
         DockFull,
-        TimeOut
+        TimeOut,
+        BombExploded
     }
 
     public static LevelManager Instance { get; private set; }
@@ -238,6 +239,7 @@ public class LevelManager : MonoBehaviour
         Transform root = matchItemRoot != null ? matchItemRoot : transform;
         MatchItem[] foundItems = root.GetComponentsInChildren<MatchItem>(true);
 
+        int matchableCount = 0;
         for (int i = 0; i < foundItems.Length; i++)
         {
             MatchItem item = foundItems[i];
@@ -249,12 +251,16 @@ public class LevelManager : MonoBehaviour
                 if (item.gameObject.activeInHierarchy && item.CurrentState == MatchItem.ItemState.InPhysics)
                 {
                     boardItems.Add(item);
+                    if (!item.IsBomb)
+                    {
+                        matchableCount++;
+                    }
                 }
             }
         }
 
-        totalItemCount = boardItems.Count;
-        remainingItemCount = boardItems.Count;
+        totalItemCount = matchableCount;
+        remainingItemCount = matchableCount;
 
 #if UNITY_EDITOR
         if (!Application.isPlaying)
@@ -290,7 +296,7 @@ public class LevelManager : MonoBehaviour
         if (currentState != LevelState.Playing) return;
 
         // If no items remain on board and dock is completely clear of pending items: WIN!
-        if (remainingItemCount <= 0 && (dockManager == null || (dockManager.CurrentItemCount == 0 && dockManager.ActiveMovingCount == 0)))
+        if (remainingItemCount <= 0 && (dockManager == null || (dockManager.NonBombItemCount == 0 && dockManager.ActiveMovingCount == 0)))
         {
             WinLevel();
         }

@@ -1901,6 +1901,10 @@ MonoBehaviour:
   powerupManager: {fileID: 653327270}
   levelDatabase: {fileID: 0}
   currentLevelManager: {fileID: 0}
+  bombExplosionVfxPrefab: {fileID: 3226449219909345238, guid: 48871f6aa11644fa28fea95b1a6f0ed5, type: 3}
+  bombShakeDuration: 0.32
+  bombShakeStrength: 0.28
+  bombFailDelay: 0.45
 --- !u!1 &1890023535
 GameObject:
   m_ObjectHideFlags: 0

@@ -52,6 +52,7 @@ public class DockManager : MonoBehaviour
     // Active movement tracking and lock controls
     private int activeMovingCount = 0;
     private bool isResolvingMatch = false;
+    private bool isBombExploding = false;
     private readonly Queue<MatchItem> pendingItems = new();
 
     public int Capacity => capacity;
@@ -63,6 +64,7 @@ public class DockManager : MonoBehaviour
     {
         get
         {
+            if (isBombExploding) return false;
             return (CurrentItemCount + pendingItems.Count) < capacity;
         }
     }
@@ -75,6 +77,22 @@ public class DockManager : MonoBehaviour
             for (int i = 0; i < slots.Count; i++)
             {
                 if (slots[i] != null && !slots[i].IsEmpty) count++;
+            }
+            return count;
+        }
+    }
+
+    public int NonBombItemCount
+    {
+        get
+        {
+            int count = 0;
+            for (int i = 0; i < slots.Count; i++)
+            {
+                if (slots[i] != null && !slots[i].IsEmpty && slots[i].CurrentItem != null && !slots[i].CurrentItem.IsBomb)
+                {
+                    count++;
+                }
             }
             return count;
         }
@@ -369,6 +387,12 @@ public class DockManager : MonoBehaviour
         centerSlot.Clear();
         rightSlot.Clear();
 
+        if (centerItem != null && centerItem.IsBomb)
+        {
+            ResolveBombExplosion(leftItem, centerItem, rightItem, matchCenterWorldPos);
+            return;
+        }
+
         // Stage 1: Outline flash feedback
         leftItem.PlayClickFeedback();
         centerItem.PlayClickFeedback();
@@ -401,6 +425,130 @@ public class DockManager : MonoBehaviour
             // Slide remaining cards left to close the 3-slot gap
             CompactSlotsLeft();
         });
+    }
+
+    private void ResolveBombExplosion(MatchItem leftItem, MatchItem centerItem, MatchItem rightItem, Vector3 dockCenterPos)
+    {
+        isBombExploding = true;
+        pendingItems.Clear();
+
+        if (LevelManager.Instance != null && LevelManager.Instance.UseTimer)
+        {
+            LevelManager.Instance.SetTimerFrozen(true);
+        }
+
+        Color redAlert = new Color(1f, 0.2f, 0.15f, 1f);
+        leftItem?.Outline?.SetOutlineColor(redAlert);
+        centerItem?.Outline?.SetOutlineColor(redAlert);
+        rightItem?.Outline?.SetOutlineColor(redAlert);
+
+        Vector3 centerWorldPos = GetViewportCenterWorldPos(1.6f);
+        Vector3 centerBaseScale = centerItem != null ? centerItem.transform.localScale : Vector3.one;
+
+        Sequence bombSeq = DOTween.Sequence();
+
+        // Stage 1: Merge 3 bombs into the center dock slot
+        if (leftItem != null) bombSeq.Join(leftItem.transform.DOMove(dockCenterPos, matchConvergeDuration).SetEase(Ease.InQuad));
+        if (rightItem != null) bombSeq.Join(rightItem.transform.DOMove(dockCenterPos, matchConvergeDuration).SetEase(Ease.InQuad));
+        if (centerItem != null) bombSeq.Join(centerItem.transform.DOPunchScale(centerBaseScale * 0.2f, matchConvergeDuration, 1, 0.5f));
+
+        bombSeq.AppendCallback(() =>
+        {
+            if (leftItem != null) leftItem.gameObject.SetActive(false);
+            if (rightItem != null) rightItem.gameObject.SetActive(false);
+            if (centerItem != null) centerItem.transform.SetParent(null, true);
+        });
+
+        // Stage 2: Jump single merged bomb to screen center, swell up, and tremble
+        if (centerItem != null)
+        {
+            bombSeq.Append(centerItem.transform.DOJump(centerWorldPos, 1.3f, 1, 0.34f).SetEase(Ease.OutQuad));
+            bombSeq.Join(centerItem.transform.DOScale(centerBaseScale * 2.25f, 0.34f).SetEase(Ease.OutBack));
+            bombSeq.Append(centerItem.transform.DOShakePosition(0.18f, 0.08f, 18, 90f, false, false));
+        }
+
+        GameManager gm = GameManager.Instance;
+        GameObject explosionVfxPrefab = gm != null ? gm.BombExplosionVfxPrefab : null;
+        float shakeDuration = gm != null ? gm.BombShakeDuration : 0.32f;
+        float shakeStrength = gm != null ? gm.BombShakeStrength : 0.28f;
+        float failDelay = gm != null ? gm.BombFailDelay : 0.45f;
+
+        // Stage 3: Detonate with VFX, sound, haptic, camera shake, and board scatter
+        bombSeq.AppendCallback(() =>
+        {
+            if (centerItem != null) centerItem.gameObject.SetActive(false);
+
+            if (explosionVfxPrefab != null)
+            {
+                GameObject vfx = Instantiate(explosionVfxPrefab, centerWorldPos, Quaternion.identity);
+                Destroy(vfx, 3f);
+            }
+
+            SoundManager.PlaySound(SoundType.BombExplode);
+            Taptic.Heavy();
+            TriggerCameraShake(shakeDuration, shakeStrength);
+            ApplyExplosionForceToBoard(centerWorldPos);
+        });
+
+        // Stage 4: Wait briefly so explosion is visible before showing LevelFailPopup
+        bombSeq.AppendInterval(failDelay);
+        bombSeq.OnComplete(() =>
+        {
+            isResolvingMatch = false;
+            isBombExploding = false;
+            LevelManager.Instance?.LoseLevel(LevelManager.LoseReason.BombExploded);
+        });
+    }
+
+    private Vector3 GetViewportCenterWorldPos(float targetHeight)
+    {
+        Camera cam = Camera.main;
+        if (cam != null)
+        {
+            Ray ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.52f, 0f));
+            Plane plane = new Plane(Vector3.up, new Vector3(0f, targetHeight, 0f));
+            if (plane.Raycast(ray, out float enter))
+            {
+                return ray.GetPoint(enter);
+            }
+        }
+
+        return LevelManager.Instance != null && LevelManager.Instance.MatchItemRoot != null
+            ? LevelManager.Instance.MatchItemRoot.position + Vector3.up * targetHeight
+            : new Vector3(0f, targetHeight, 0f);
+    }
+
+    private void TriggerCameraShake(float duration, float strength)
+    {
+        Camera cam = Camera.main;
+        if (cam == null) return;
+
+        Transform camTransform = cam.transform;
+        Vector3 originalPos = camTransform.position;
+        camTransform.DOKill();
+        camTransform.DOShakePosition(duration, strength, 22, 90f, false, true)
+            .OnComplete(() =>
+            {
+                if (camTransform != null) camTransform.position = originalPos;
+            })
+            .OnKill(() =>
+            {
+                if (camTransform != null) camTransform.position = originalPos;
+            });
+    }
+
+    private void ApplyExplosionForceToBoard(Vector3 explosionPos)
+    {
+        Collider[] hits = Physics.OverlapSphere(explosionPos, 10f);
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Rigidbody otherRb = hits[i].attachedRigidbody;
+            if (otherRb != null && !otherRb.isKinematic)
+            {
+                otherRb.WakeUp();
+                otherRb.AddExplosionForce(420f, explosionPos, 10f, 1.2f);
+            }
+        }
     }
 
     /// <summary>
