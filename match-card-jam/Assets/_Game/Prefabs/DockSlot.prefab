@@ -125,6 +125,7 @@ MonoBehaviour:
   matchItemRoot: {fileID: 3898945619852182642}
   targetScale: {x: 0.5, y: 0.5, z: 0.5}
   flightPeakScaleMultiplier: 1.22
+  slotImage: {fileID: 0}
 --- !u!1 &6126784268997495277
 GameObject:
   m_ObjectHideFlags: 0

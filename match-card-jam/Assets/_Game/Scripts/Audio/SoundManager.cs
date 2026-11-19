@@ -223,9 +223,9 @@ public class SoundManager : MonoBehaviour
 
     #region SFX Playback
 
-    public static void PlaySound(SoundType type, float volumeMultiplier = 1f)
+    public static void PlaySound(SoundType type, float volumeMultiplier = 1f, float pitchMultiplier = 1f)
     {
-        Instance.PlaySoundInternal(type, volumeMultiplier);
+        Instance.PlaySoundInternal(type, volumeMultiplier, pitchMultiplier);
     }
 
     public static void PlaySound(AudioClip clip, float volume = 1f, float pitch = 1f)
@@ -234,7 +234,7 @@ public class SoundManager : MonoBehaviour
         Instance.PlaySoundInternal(clip, volume, pitch);
     }
 
-    private void PlaySoundInternal(SoundType type, float volumeMultiplier)
+    private void PlaySoundInternal(SoundType type, float volumeMultiplier, float pitchMultiplier = 1f)
     {
         if (!GameData.IsSoundEnabled) return;
 
@@ -244,6 +244,7 @@ public class SoundManager : MonoBehaviour
         }
 
         float pitch = (cfg.minPitch == cfg.maxPitch) ? cfg.minPitch : UnityEngine.Random.Range(cfg.minPitch, cfg.maxPitch);
+        pitch *= pitchMultiplier;
         float volume = cfg.volume * volumeMultiplier;
 
         PlaySoundInternal(cfg.clip, volume, pitch);
@@ -468,7 +469,7 @@ public class SoundManager : MonoBehaviour
             AudioClip selectClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Game/Audios/Sounds/card_select_sound.wav");
             if (selectClip != null)
             {
-                soundConfigs.Add(new SoundConfig { soundType = SoundType.CardSelect, clip = selectClip, volume = 1f, minPitch = 0.98f, maxPitch = 1.02f });
+                soundConfigs.Add(new SoundConfig { soundType = SoundType.MatchItemSelect, clip = selectClip, volume = 1f, minPitch = 0.98f, maxPitch = 1.02f });
             }
 
             AudioClip mergeClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Game/Audios/Sounds/merge_sound.mp3");

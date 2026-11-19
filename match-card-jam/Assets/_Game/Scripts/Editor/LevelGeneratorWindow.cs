@@ -773,16 +773,54 @@ public class LevelGeneratorWindow : EditorWindow
         // 3. Read dock capacity
         SyncDockCapacityFromTemplate();
 
-        // 4. Count existing MatchItems and map them back to catalog SetCounts
+        // 4. Count existing MatchItems, Mystery, Frozen, and Bomb items
         ClearAllSelections();
+        _mysteryItemCount = 0;
+        _frozenItemCount = 0;
+        _bombItemCount = 0;
+        int loadedFreezeLayers = -1;
+
         MatchItem[] existingItems = levelPrefab.GetComponentsInChildren<MatchItem>(true);
         Dictionary<int, int> countsById = new();
 
         for (int i = 0; i < existingItems.Length; i++)
         {
-            if (existingItems[i] == null) continue;
-            int id = existingItems[i].Id;
+            MatchItem item = existingItems[i];
+            if (item == null) continue;
+
+            if (item.IsBomb)
+            {
+                _bombItemCount++;
+                continue;
+            }
+
+            if (item.IsMystery)
+            {
+                _mysteryItemCount++;
+            }
+
+            SerializedObject itemSo = new SerializedObject(item);
+            SerializedProperty frozenProp = itemSo.FindProperty("isFrozen");
+            if (frozenProp != null && frozenProp.boolValue)
+            {
+                _frozenItemCount++;
+                if (loadedFreezeLayers < 0)
+                {
+                    SerializedProperty layersProp = itemSo.FindProperty("freezeLayers");
+                    if (layersProp != null)
+                    {
+                        loadedFreezeLayers = Mathf.Max(1, layersProp.intValue);
+                    }
+                }
+            }
+
+            int id = item.Id;
             countsById[id] = countsById.TryGetValue(id, out int c) ? c + 1 : 1;
+        }
+
+        if (loadedFreezeLayers > 0)
+        {
+            _freezeLayers = loadedFreezeLayers;
         }
 
         for (int i = 0; i < _catalog.Count; i++)

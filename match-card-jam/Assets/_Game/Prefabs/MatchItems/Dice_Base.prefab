@@ -43,7 +43,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 682666260504650541}
   serializedVersion: 5
-  m_Mass: 10
+  m_Mass: 1
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -100,6 +100,10 @@ MonoBehaviour:
   dockScaleMultiplier: 1.25
   isMystery: 0
   mysteryMaterial: {fileID: 2100000, guid: 4f73b84ae5a384efe8919da6a6a1a6b8, type: 2}
+  isFrozen: 0
+  freezeLayers: 3
+  iceMaterial: {fileID: 0}
+  isBomb: 0
 --- !u!1 &2152316826216059027
 GameObject:
   m_ObjectHideFlags: 0

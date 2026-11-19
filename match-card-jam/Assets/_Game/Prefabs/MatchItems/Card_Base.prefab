@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 6316356936817438431}
   - component: {fileID: 8476473868810077745}
   - component: {fileID: 6654406267509332860}
-  - component: {fileID: 45732271548127401}
   m_Layer: 0
   m_Name: Outline
   m_TagString: Untagged
@@ -91,27 +90,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!65 &45732271548127401
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1826551633394857824}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 1.4920709, y: 0.048585594, z: 1.0000002}
-  m_Center: {x: 0, y: -0.0000000037252903, z: 0}
 --- !u!1 &3317796853105807081
 GameObject:
   m_ObjectHideFlags: 0
@@ -313,7 +291,10 @@ MonoBehaviour:
   dockScaleMultiplier: 1
   isMystery: 0
   mysteryMaterial: {fileID: 2100000, guid: 8b2c7c535822f445e82d63dfa0269c49, type: 2}
-  mysteryRevealVfxPrefab: {fileID: 416130605540477703, guid: cfbbf8567f0324f0e9921c70937488b5, type: 3}
+  isFrozen: 0
+  freezeLayers: 3
+  iceMaterial: {fileID: 0}
+  isBomb: 0
 --- !u!114 &5941314718439243221
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -339,7 +320,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8368746185657536745}
   serializedVersion: 5
-  m_Mass: 10
+  m_Mass: 1
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}

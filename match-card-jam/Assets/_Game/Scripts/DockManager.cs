@@ -48,12 +48,16 @@ public class DockManager : MonoBehaviour
     [Header("Match Animation Settings")]
     [SerializeField] private float matchConvergeDuration = 0.16f;
     [SerializeField] private float matchShrinkDuration = 0.18f;
+    [SerializeField] private float matchCameraFovPunch = 1.2f;
 
     // Active movement tracking and lock controls
     private int activeMovingCount = 0;
     private bool isResolvingMatch = false;
     private bool isBombExploding = false;
     private readonly Queue<MatchItem> pendingItems = new();
+    private Tween cameraFovTween;
+    private float cachedBaseFov = -1f;
+    private float cachedBaseOrthoSize = -1f;
 
     public int Capacity => capacity;
     public IReadOnlyList<DockSlot> Slots => slots;
@@ -132,6 +136,8 @@ public class DockManager : MonoBehaviour
     private void OnDisable()
     {
         InputManager.OnItemPicked -= HandleItemPicked;
+        cameraFovTween?.Kill();
+        ClearAllSlotWarnings();
     }
 
     private void HandleItemPicked(MatchItem item)
@@ -229,6 +235,7 @@ public class DockManager : MonoBehaviour
         {
             activeMovingCount = 0;
             CheckAndResolveMatches();
+            UpdateLastSlotWarning();
             if (!isResolvingMatch && activeMovingCount == 0 && pendingItems.Count == 0)
             {
                 OnDockSettled?.Invoke();
@@ -335,6 +342,7 @@ public class DockManager : MonoBehaviour
 
         if (matchStartIndex != -1)
         {
+            ClearAllSlotWarnings();
             ResolveMatch(matchStartIndex);
         }
         else
@@ -344,6 +352,8 @@ public class DockManager : MonoBehaviour
                 ProcessPendingItems();
                 return;
             }
+
+            UpdateLastSlotWarning();
 
             // No 3-item match found; check if dock is deadlocked
             CheckDockDeadlock();
@@ -399,6 +409,7 @@ public class DockManager : MonoBehaviour
         rightItem.PlayClickFeedback();
 
         SoundManager.PlaySound(SoundType.CardMatch);
+        PlayMatchCameraBreath(matchConvergeDuration + 0.06f, matchShrinkDuration + 0.1f);
 
         Sequence matchSeq = DOTween.Sequence();
 
@@ -407,7 +418,13 @@ public class DockManager : MonoBehaviour
         matchSeq.Join(rightItem.transform.DOMove(matchCenterWorldPos, matchConvergeDuration).SetEase(Ease.InQuad));
         matchSeq.Join(centerItem.transform.DOPunchScale(Vector3.one * 0.15f, matchConvergeDuration, 1, 0.5f));
 
-        // Stage 3: 3 converged cards scale down and disappear
+        // Stage 3: Quick anticipation swell before shrinking to zero
+        Vector3 centerScale = centerItem.transform.localScale;
+        matchSeq.Append(leftItem.transform.DOScale(centerScale * 1.18f, 0.06f).SetEase(Ease.OutQuad));
+        matchSeq.Join(centerItem.transform.DOScale(centerScale * 1.18f, 0.06f).SetEase(Ease.OutQuad));
+        matchSeq.Join(rightItem.transform.DOScale(centerScale * 1.18f, 0.06f).SetEase(Ease.OutQuad));
+
+        // Stage 4: 3 converged cards scale down and disappear
         matchSeq.Append(leftItem.transform.DOScale(Vector3.zero, matchShrinkDuration).SetEase(Ease.InBack));
         matchSeq.Join(centerItem.transform.DOScale(Vector3.zero, matchShrinkDuration).SetEase(Ease.InBack));
         matchSeq.Join(rightItem.transform.DOScale(Vector3.zero, matchShrinkDuration).SetEase(Ease.InBack));
@@ -427,9 +444,47 @@ public class DockManager : MonoBehaviour
         });
     }
 
+    private void PlayMatchCameraBreath(float zoomInDuration, float zoomOutDuration)
+    {
+        if (matchCameraFovPunch <= 0f) return;
+
+        Camera cam = Camera.main;
+        if (cam == null) return;
+
+        cameraFovTween?.Kill();
+
+        if (cam.orthographic)
+        {
+            if (cachedBaseOrthoSize < 0f) cachedBaseOrthoSize = cam.orthographicSize;
+            float baseSize = cachedBaseOrthoSize;
+            float targetSize = Mathf.Max(0.5f, baseSize - matchCameraFovPunch * 0.15f);
+
+            Sequence seq = DOTween.Sequence();
+            seq.Append(cam.DOOrthoSize(targetSize, zoomInDuration).SetEase(Ease.InOutSine));
+            seq.Append(cam.DOOrthoSize(baseSize, zoomOutDuration).SetEase(Ease.InOutSine));
+            seq.OnComplete(() => { if (cam != null) cam.orthographicSize = baseSize; });
+            seq.OnKill(() => { if (cam != null) cam.orthographicSize = baseSize; });
+            cameraFovTween = seq;
+        }
+        else
+        {
+            if (cachedBaseFov < 0f) cachedBaseFov = cam.fieldOfView;
+            float baseFov = cachedBaseFov;
+            float targetFov = Mathf.Max(15f, baseFov - matchCameraFovPunch);
+
+            Sequence seq = DOTween.Sequence();
+            seq.Append(cam.DOFieldOfView(targetFov, zoomInDuration).SetEase(Ease.InOutSine));
+            seq.Append(cam.DOFieldOfView(baseFov, zoomOutDuration).SetEase(Ease.InOutSine));
+            seq.OnComplete(() => { if (cam != null) cam.fieldOfView = baseFov; });
+            seq.OnKill(() => { if (cam != null) cam.fieldOfView = baseFov; });
+            cameraFovTween = seq;
+        }
+    }
+
     private void ResolveBombExplosion(MatchItem leftItem, MatchItem centerItem, MatchItem rightItem, Vector3 dockCenterPos)
     {
         isBombExploding = true;
+        ClearAllSlotWarnings();
         pendingItems.Clear();
 
         if (LevelManager.Instance != null && LevelManager.Instance.UseTimer)
@@ -488,6 +543,7 @@ public class DockManager : MonoBehaviour
             Taptic.Heavy();
             TriggerCameraShake(shakeDuration, shakeStrength);
             ApplyExplosionForceToBoard(centerWorldPos);
+            DetonateRemainingBoardBombs(explosionVfxPrefab, leftItem, centerItem, rightItem);
         });
 
         // Stage 4: Wait briefly so explosion is visible before showing LevelFailPopup
@@ -539,15 +595,58 @@ public class DockManager : MonoBehaviour
 
     private void ApplyExplosionForceToBoard(Vector3 explosionPos)
     {
-        Collider[] hits = Physics.OverlapSphere(explosionPos, 10f);
+        // Place physics blast center at table height so items launch UPWARD instead of being pressed into the table
+        Vector3 blastCenter = new Vector3(explosionPos.x, 0f, explosionPos.z);
+        Collider[] hits = Physics.OverlapSphere(blastCenter, 14f);
+        HashSet<Rigidbody> affected = new();
+
         for (int i = 0; i < hits.Length; i++)
         {
             Rigidbody otherRb = hits[i].attachedRigidbody;
-            if (otherRb != null && !otherRb.isKinematic)
+            if (otherRb == null || otherRb.isKinematic || !affected.Add(otherRb)) continue;
+
+            MatchItem hitItem = otherRb.GetComponent<MatchItem>();
+            if (hitItem != null && hitItem.IsBomb) continue;
+
+            otherRb.WakeUp();
+            otherRb.AddExplosionForce(11f, blastCenter, 14f, 1.2f, ForceMode.Impulse);
+            otherRb.AddForce(Vector3.up * UnityEngine.Random.Range(2.5f, 5f), ForceMode.Impulse);
+            otherRb.AddTorque(UnityEngine.Random.insideUnitSphere * 9f, ForceMode.Impulse);
+        }
+    }
+
+    private void DetonateRemainingBoardBombs(GameObject explosionVfxPrefab, MatchItem leftItem, MatchItem centerItem, MatchItem rightItem)
+    {
+        if (LevelManager.Instance == null || LevelManager.Instance.BoardItems == null) return;
+
+        IReadOnlyList<MatchItem> boardItems = LevelManager.Instance.BoardItems;
+        int chainIndex = 0;
+
+        for (int i = 0; i < boardItems.Count; i++)
+        {
+            MatchItem item = boardItems[i];
+            if (item == null || !item.IsBomb || !item.gameObject.activeInHierarchy) continue;
+            if (item == leftItem || item == centerItem || item == rightItem) continue;
+
+            float delay = 0.06f + chainIndex * 0.05f;
+            chainIndex++;
+
+            item.transform.DOKill();
+            Sequence chainSeq = DOTween.Sequence();
+            chainSeq.AppendInterval(delay);
+            chainSeq.Append(item.transform.DOScale(item.transform.localScale * 1.35f, 0.08f).SetEase(Ease.OutQuad));
+            chainSeq.AppendCallback(() =>
             {
-                otherRb.WakeUp();
-                otherRb.AddExplosionForce(420f, explosionPos, 10f, 1.2f);
-            }
+                if (item == null) return;
+                Vector3 pos = item.transform.position;
+                item.gameObject.SetActive(false);
+
+                if (explosionVfxPrefab != null)
+                {
+                    GameObject vfx = Instantiate(explosionVfxPrefab, pos, Quaternion.identity);
+                    Destroy(vfx, 3f);
+                }
+            });
         }
     }
 
@@ -593,6 +692,7 @@ public class DockManager : MonoBehaviour
         {
             isResolvingMatch = false;
             CheckAndResolveMatches();
+            UpdateLastSlotWarning();
             if (!isResolvingMatch && activeMovingCount == 0 && pendingItems.Count == 0)
             {
                 OnDockSettled?.Invoke();
@@ -610,6 +710,33 @@ public class DockManager : MonoBehaviour
             if (slots[i] != null)
             {
                 slots[i].SlotIndex = i;
+            }
+        }
+    }
+
+    public void UpdateLastSlotWarning()
+    {
+        bool isPlaying = LevelManager.Instance == null || LevelManager.Instance.CurrentState == LevelManager.LevelState.Playing;
+        bool canWarn = isPlaying && !isResolvingMatch && !isBombExploding;
+        bool warnLastEmpty = canWarn && CurrentItemCount == capacity - 1;
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            DockSlot slot = slots[i];
+            if (slot == null) continue;
+
+            bool hasBomb = canWarn && !slot.IsEmpty && slot.CurrentItem != null && slot.CurrentItem.IsBomb;
+            slot.SetWarningPulse(hasBomb || (warnLastEmpty && slot.IsEmpty));
+        }
+    }
+
+    private void ClearAllSlotWarnings()
+    {
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (slots[i] != null)
+            {
+                slots[i].SetWarningPulse(false);
             }
         }
     }

@@ -56,6 +56,8 @@ public class MatchItem : MonoBehaviour
 
     private ItemState currentState = ItemState.InPhysics;
     private Vector3 initialScale = Vector3.one;
+    private Vector3 initialMeshScale = Vector3.one;
+    private Vector3 initialOutlineScale = Vector3.one;
     private bool isInitialized = false;
     private bool isRevealed = false;
     private int remainingFreezeLayers = 0;
@@ -74,6 +76,8 @@ public class MatchItem : MonoBehaviour
     private Tween iceFlashTween;
     private bool subscribedToMatchEvent = false;
     private static float lastIceMeltSoundTime = -1f;
+    private static float lastSelectSoundTime = -1f;
+    private static int selectPitchCombo = 0;
 
     private static readonly int MeltProgressProp = Shader.PropertyToID("_MeltProgress");
     private static readonly int MeltAxisProp = Shader.PropertyToID("_MeltAxis");
@@ -133,6 +137,11 @@ public class MatchItem : MonoBehaviour
 
         // 2. Locate and initialize outline component
         InitOutline();
+        initialMeshScale = mainRenderer != null ? mainRenderer.transform.localScale : initialScale;
+        if (outline != null && outline.OutlineRenderer != null)
+        {
+            initialOutlineScale = outline.OutlineRenderer.transform.localScale;
+        }
 
         // 3. Apply mystery visual at runtime only (never bake into prefab in Edit Mode; bombs are never mystery)
         if (Application.isPlaying && isMystery && !isBomb && !isRevealed)
@@ -172,6 +181,16 @@ public class MatchItem : MonoBehaviour
             mainRenderer = outline.MainMeshRenderer != null ? outline.MainMeshRenderer : GetComponentInChildren<MeshRenderer>();
         }
         outline.Initialize(mainRenderer);
+
+        // Disable any redundant Collider on the Outline visual child so scaling it never pushes neighbors
+        if (Application.isPlaying && outline.OutlineRenderer != null)
+        {
+            Collider outlineCol = outline.OutlineRenderer.GetComponent<Collider>();
+            if (outlineCol != null && outlineCol != itemCollider)
+            {
+                outlineCol.enabled = false;
+            }
+        }
     }
 
     public void Select()
@@ -184,7 +203,61 @@ public class MatchItem : MonoBehaviour
             outline.SetHighlighted(true);
         }
 
+        ScaleVisualRenderers(1.12f, 0.08f, Ease.OutBack);
+
         Taptic.Light();
+    }
+
+    private void ScaleVisualRenderers(float multiplier, float duration, Ease ease)
+    {
+        Transform meshT = mainRenderer != null ? mainRenderer.transform : transform;
+        meshT.DOKill();
+        meshT.DOScale((mainRenderer != null ? initialMeshScale : initialScale) * multiplier, duration).SetEase(ease);
+
+        if (outline != null && outline.OutlineRenderer != null)
+        {
+            Transform outlineT = outline.OutlineRenderer.transform;
+            if (outlineT != meshT && !outlineT.IsChildOf(meshT))
+            {
+                outlineT.DOKill();
+                outlineT.DOScale(initialOutlineScale * multiplier, duration).SetEase(ease);
+            }
+        }
+    }
+
+    private void ResetVisualRenderersScale()
+    {
+        if (mainRenderer != null && mainRenderer.transform != transform)
+        {
+            mainRenderer.transform.DOKill();
+            mainRenderer.transform.localScale = initialMeshScale;
+        }
+
+        if (outline != null && outline.OutlineRenderer != null)
+        {
+            Transform outlineT = outline.OutlineRenderer.transform;
+            if (outlineT != transform && (mainRenderer == null || (!outlineT.IsChildOf(mainRenderer.transform) && outlineT != mainRenderer.transform)))
+            {
+                outlineT.DOKill();
+                outlineT.localScale = initialOutlineScale;
+            }
+        }
+    }
+
+    public static void PlaySelectSoundWithCombo()
+    {
+        if (Time.unscaledTime - lastSelectSoundTime < 0.75f)
+        {
+            selectPitchCombo = Mathf.Min(selectPitchCombo + 1, 4);
+        }
+        else
+        {
+            selectPitchCombo = 0;
+        }
+        lastSelectSoundTime = Time.unscaledTime;
+
+        float pitch = 1f + selectPitchCombo * 0.05f;
+        SoundManager.PlaySound(SoundType.MatchItemSelect, 1f, pitch);
     }
 
     public void Deselect()
@@ -196,6 +269,8 @@ public class MatchItem : MonoBehaviour
         {
             outline.SetHighlighted(false);
         }
+
+        ScaleVisualRenderers(1f, 0.08f, Ease.OutQuad);
     }
 
     public void PlayClickFeedback(Action onComplete = null)
@@ -216,6 +291,8 @@ public class MatchItem : MonoBehaviour
 
         if (newState == ItemState.Flying || newState == ItemState.InDock || newState == ItemState.Matched)
         {
+            ResetVisualRenderersScale();
+
             Vector3 pickPosition = transform.position;
 
             // Disable raycast and physics collision during flight or dock phase

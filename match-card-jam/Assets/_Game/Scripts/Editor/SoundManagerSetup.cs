@@ -58,11 +58,11 @@ public static class SoundManagerSetup
         // 3. LevelFail
         AddSoundConfig(soundConfigsProp, SoundType.LevelFail, failClip, 1f, 1f, 1f);
 
-        // 4. CardSelect (Fly to dock)
+        // 4. MatchItemSelect
         AudioClip selectClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/_Game/Audios/Sounds/card_select_sound.wav");
         if (selectClip != null)
         {
-            AddSoundConfig(soundConfigsProp, SoundType.CardSelect, selectClip, 1f, 0.98f, 1.02f);
+            AddSoundConfig(soundConfigsProp, SoundType.MatchItemSelect, selectClip, 1f, 0.98f, 1.02f);
         }
 
         // 5. CardMatch (Merge)

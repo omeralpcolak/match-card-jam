@@ -86,6 +86,8 @@ public class ClearDockPowerup : PowerupBase
             }
         }
 
+        context.DockManager.UpdateLastSlotWarning();
+
         if (_dockItems.Count == 0)
         {
             Complete();

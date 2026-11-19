@@ -61,6 +61,7 @@ MonoBehaviour:
   moveEase: 27
   matchConvergeDuration: 0.16
   matchShrinkDuration: 0.18
+  matchCameraFovPunch: 0.5
 --- !u!1 &8031562437787379245
 GameObject:
   m_ObjectHideFlags: 0
@@ -148,6 +149,18 @@ PrefabInstance:
     - target: {fileID: 2938514211933591424, guid: f296d409e55f94444bcf867dba12c2f4, type: 3}
       propertyPath: slotIndex
       value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3241552889026859185, guid: f296d409e55f94444bcf867dba12c2f4, type: 3}
+      propertyPath: m_Color.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3241552889026859185, guid: f296d409e55f94444bcf867dba12c2f4, type: 3}
+      propertyPath: m_Color.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3241552889026859185, guid: f296d409e55f94444bcf867dba12c2f4, type: 3}
+      propertyPath: m_Color.r
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4490869104681164545, guid: f296d409e55f94444bcf867dba12c2f4, type: 3}
       propertyPath: m_Name

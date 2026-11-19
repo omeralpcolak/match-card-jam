@@ -229,8 +229,8 @@ public class InputManager : MonoBehaviour
         item.SetState(MatchItem.ItemState.Flying);
         item.PlayClickFeedback();
 
-        // Play sound as card begins flying towards dock
-        SoundManager.PlaySound(SoundType.CardSelect);
+        // Play combo-escalating select sound upon release/launch
+        MatchItem.PlaySelectSoundWithCombo();
 
         OnItemPicked?.Invoke(item);
     }
