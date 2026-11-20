@@ -59,6 +59,7 @@ public static class CardPatternGenerator
 
     public static void BindTexturesToMaterials()
     {
+        Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit");
         bool dirty = false;
         foreach (var spec in DefaultSpecs)
         {
@@ -68,8 +69,15 @@ public static class CardPatternGenerator
             Material mat = AssetDatabase.LoadAssetAtPath<Material>(spec.MaterialPath);
             if (tex == null || mat == null) continue;
 
-            if (mat.GetTexture("_BaseMap") != tex || mat.GetColor("_BaseColor") != Color.white)
+            bool needsShader = unlitShader != null && mat.shader != unlitShader;
+            bool needsTex = mat.GetTexture("_BaseMap") != tex || mat.GetColor("_BaseColor") != Color.white;
+
+            if (needsShader || needsTex)
             {
+                if (needsShader)
+                {
+                    mat.shader = unlitShader;
+                }
                 mat.SetTexture("_BaseMap", tex);
                 mat.SetTexture("_MainTex", tex);
                 mat.SetColor("_BaseColor", Color.white);

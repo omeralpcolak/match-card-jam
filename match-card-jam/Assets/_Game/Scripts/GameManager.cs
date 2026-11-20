@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Primary manager for the Game scene.
@@ -31,6 +32,10 @@ public class GameManager : MonoBehaviour
     [Header("Active Level")]
     [Tooltip("Currently active level manager. If empty, searched in scene or instantiated from LevelDatabase.")]
     [SerializeField] private LevelManager currentLevelManager;
+
+    [Header("Dock Table Visual")]
+    [Tooltip("UI Image of the wooden dock board whose width adjusts based on the level's dock slot count.")]
+    [SerializeField] private Image dockTableImage;
 
     [Header("Bomb Explosion Settings")]
     [Tooltip("Explosion VFX prefab spawned at screen center when 3 bombs match in the dock.")]
@@ -161,11 +166,24 @@ public class GameManager : MonoBehaviour
                 onWon: HandleLevelWon,
                 onLost: HandleLevelLost
             );
+            UpdateDockTableWidth(currentLevelManager.DockManager);
         }
         else
         {
             Debug.LogWarning("[GameManager] No LevelManager found in scene to initialize and LevelDatabase is not assigned!");
         }
+    }
+
+    public void UpdateDockTableWidth(DockManager dockManager)
+    {
+        if (dockTableImage == null || dockManager == null) return;
+
+        int slotCount = dockManager.Slots != null && dockManager.Slots.Count > 0
+            ? dockManager.Slots.Count
+            : dockManager.Capacity;
+
+        float targetWidth = 550f + Mathf.Max(0, slotCount - 3) * 150f;
+        dockTableImage.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, targetWidth);
     }
 
     private void HandleLevelWon()

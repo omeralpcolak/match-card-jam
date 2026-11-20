@@ -14809,7 +14809,7 @@ MonoBehaviour:
   rb: {fileID: 3136656519719930459}
   itemCollider: {fileID: 5905712783285162752}
   physicsWakeRadius: 2.5
-  dockScaleMultiplier: 0.85
+  dockScaleMultiplier: 1.12
   isMystery: 0
   mysteryMaterial: {fileID: 0}
   isFrozen: 0

@@ -24,7 +24,12 @@ public static class MysteryAssetGenerator
 
     private static void EnsureMysteryMaterialsCreated()
     {
-        if (!File.Exists(CARD_MYSTERY_MAT_PATH) || !File.Exists(DICE_MYSTERY_MAT_PATH))
+        Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit");
+        Material cardMat = AssetDatabase.LoadAssetAtPath<Material>(CARD_MYSTERY_MAT_PATH);
+        Material diceMat = AssetDatabase.LoadAssetAtPath<Material>(DICE_MYSTERY_MAT_PATH);
+
+        if (cardMat == null || diceMat == null ||
+            (unlitShader != null && (cardMat.shader != unlitShader || diceMat.shader != unlitShader)))
         {
             GenerateMysteryMaterials();
         }
@@ -34,14 +39,14 @@ public static class MysteryAssetGenerator
     public static void GenerateMysteryMaterials()
     {
         Material refMat = AssetDatabase.LoadAssetAtPath<Material>(REFERENCE_UNLIT_MAT_PATH);
-        Shader fallbackShader = refMat != null ? refMat.shader : Shader.Find("Universal Render Pipeline/Unlit");
-        if (fallbackShader == null)
+        Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (unlitShader == null)
         {
-            fallbackShader = Shader.Find("Unlit/Texture");
+            unlitShader = refMat != null ? refMat.shader : Shader.Find("Unlit/Texture");
         }
 
-        bool cardOk = CreateOrUpdateMaterial(CARD_MYSTERY_MAT_PATH, CARD_MYSTERY_TEX_PATH, refMat, fallbackShader);
-        bool diceOk = CreateOrUpdateMaterial(DICE_MYSTERY_MAT_PATH, DICE_MYSTERY_TEX_PATH, refMat, fallbackShader);
+        bool cardOk = CreateOrUpdateMaterial(CARD_MYSTERY_MAT_PATH, CARD_MYSTERY_TEX_PATH, refMat, unlitShader);
+        bool diceOk = CreateOrUpdateMaterial(DICE_MYSTERY_MAT_PATH, DICE_MYSTERY_TEX_PATH, refMat, unlitShader);
 
         if (cardOk || diceOk)
         {
@@ -51,7 +56,7 @@ public static class MysteryAssetGenerator
         }
     }
 
-    private static bool CreateOrUpdateMaterial(string matPath, string texPath, Material refMat, Shader fallbackShader)
+    private static bool CreateOrUpdateMaterial(string matPath, string texPath, Material refMat, Shader targetShader)
     {
         Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
         if (tex == null)
@@ -63,15 +68,17 @@ public static class MysteryAssetGenerator
         Material mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
         if (mat == null)
         {
-            mat = refMat != null ? new Material(refMat) : new Material(fallbackShader);
+            mat = targetShader != null ? new Material(targetShader) : new Material(refMat);
             mat.name = Path.GetFileNameWithoutExtension(matPath);
             AssetDatabase.CreateAsset(mat, matPath);
         }
+        else if (targetShader != null && mat.shader != targetShader)
+        {
+            mat.shader = targetShader;
+        }
 
         mat.SetTexture("_BaseMap", tex);
-        mat.SetTexture("_MainTex", tex);
         mat.SetColor("_BaseColor", Color.white);
-        mat.SetColor("_Color", Color.white);
         EditorUtility.SetDirty(mat);
         return true;
     }

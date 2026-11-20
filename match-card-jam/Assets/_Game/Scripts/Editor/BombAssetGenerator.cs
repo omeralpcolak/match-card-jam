@@ -96,7 +96,7 @@ public static class BombAssetGenerator
         itemSo.FindProperty("outline").objectReferenceValue = itemOutline;
         itemSo.FindProperty("rb").objectReferenceValue = rb;
         itemSo.FindProperty("itemCollider").objectReferenceValue = col;
-        itemSo.FindProperty("dockScaleMultiplier").floatValue = 0.85f;
+        itemSo.FindProperty("dockScaleMultiplier").floatValue = 1.12f;
         itemSo.FindProperty("isBomb").boolValue = true;
         itemSo.ApplyModifiedPropertiesWithoutUndo();
 

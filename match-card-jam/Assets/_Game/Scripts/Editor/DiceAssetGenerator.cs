@@ -58,6 +58,15 @@ public static class DiceAssetGenerator
         if ((!File.Exists(DICE_BASE_PREFAB_PATH) || !File.Exists(DICE_OUTLINE_MAT_PATH)) && File.Exists(DICE_MODEL_PATH))
         {
             GenerateAllDiceAssets();
+            return;
+        }
+
+        Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit");
+        Material sampleMat = AssetDatabase.LoadAssetAtPath<Material>($"{DICE_STAR_MAT_DIR}/Dice_red_star_mat.mat");
+        if (unlitShader != null && sampleMat != null && sampleMat.shader != unlitShader)
+        {
+            GenerateMaterials();
+            AssetDatabase.SaveAssets();
         }
     }
 
@@ -84,10 +93,10 @@ public static class DiceAssetGenerator
     private static void GenerateMaterials()
     {
         Material refMat = AssetDatabase.LoadAssetAtPath<Material>(REFERENCE_UNLIT_MAT_PATH);
-        Shader unlitShader = refMat != null ? refMat.shader : Shader.Find("Universal Render Pipeline/Unlit");
+        Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit");
         if (unlitShader == null)
         {
-            unlitShader = Shader.Find("Unlit/Texture");
+            unlitShader = refMat != null ? refMat.shader : Shader.Find("Unlit/Texture");
         }
 
         for (int i = 0; i < Colors.Length; i++)
@@ -105,7 +114,7 @@ public static class DiceAssetGenerator
         }
     }
 
-    private static void CreateOrUpdateMaterial(string matPath, string texPath, Material refMat, Shader fallbackShader)
+    private static void CreateOrUpdateMaterial(string matPath, string texPath, Material refMat, Shader targetShader)
     {
         Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
         if (tex == null)
@@ -117,15 +126,17 @@ public static class DiceAssetGenerator
         Material mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
         if (mat == null)
         {
-            mat = refMat != null ? new Material(refMat) : new Material(fallbackShader);
+            mat = targetShader != null ? new Material(targetShader) : new Material(refMat);
             mat.name = Path.GetFileNameWithoutExtension(matPath);
             AssetDatabase.CreateAsset(mat, matPath);
         }
+        else if (targetShader != null && mat.shader != targetShader)
+        {
+            mat.shader = targetShader;
+        }
 
         mat.SetTexture("_BaseMap", tex);
-        mat.SetTexture("_MainTex", tex);
         mat.SetColor("_BaseColor", Color.white);
-        mat.SetColor("_Color", Color.white);
         EditorUtility.SetDirty(mat);
     }
 

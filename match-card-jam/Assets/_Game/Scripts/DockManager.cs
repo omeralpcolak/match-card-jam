@@ -48,16 +48,12 @@ public class DockManager : MonoBehaviour
     [Header("Match Animation Settings")]
     [SerializeField] private float matchConvergeDuration = 0.16f;
     [SerializeField] private float matchShrinkDuration = 0.18f;
-    [SerializeField] private float matchCameraFovPunch = 1.2f;
 
     // Active movement tracking and lock controls
     private int activeMovingCount = 0;
     private bool isResolvingMatch = false;
     private bool isBombExploding = false;
     private readonly Queue<MatchItem> pendingItems = new();
-    private Tween cameraFovTween;
-    private float cachedBaseFov = -1f;
-    private float cachedBaseOrthoSize = -1f;
 
     public int Capacity => capacity;
     public IReadOnlyList<DockSlot> Slots => slots;
@@ -136,7 +132,6 @@ public class DockManager : MonoBehaviour
     private void OnDisable()
     {
         InputManager.OnItemPicked -= HandleItemPicked;
-        cameraFovTween?.Kill();
         ClearAllSlotWarnings();
     }
 
@@ -409,7 +404,6 @@ public class DockManager : MonoBehaviour
         rightItem.PlayClickFeedback();
 
         SoundManager.PlaySound(SoundType.CardMatch);
-        PlayMatchCameraBreath(matchConvergeDuration + 0.06f, matchShrinkDuration + 0.1f);
 
         Sequence matchSeq = DOTween.Sequence();
 
@@ -442,43 +436,6 @@ public class DockManager : MonoBehaviour
             // Slide remaining cards left to close the 3-slot gap
             CompactSlotsLeft();
         });
-    }
-
-    private void PlayMatchCameraBreath(float zoomInDuration, float zoomOutDuration)
-    {
-        if (matchCameraFovPunch <= 0f) return;
-
-        Camera cam = Camera.main;
-        if (cam == null) return;
-
-        cameraFovTween?.Kill();
-
-        if (cam.orthographic)
-        {
-            if (cachedBaseOrthoSize < 0f) cachedBaseOrthoSize = cam.orthographicSize;
-            float baseSize = cachedBaseOrthoSize;
-            float targetSize = Mathf.Max(0.5f, baseSize - matchCameraFovPunch * 0.15f);
-
-            Sequence seq = DOTween.Sequence();
-            seq.Append(cam.DOOrthoSize(targetSize, zoomInDuration).SetEase(Ease.InOutSine));
-            seq.Append(cam.DOOrthoSize(baseSize, zoomOutDuration).SetEase(Ease.InOutSine));
-            seq.OnComplete(() => { if (cam != null) cam.orthographicSize = baseSize; });
-            seq.OnKill(() => { if (cam != null) cam.orthographicSize = baseSize; });
-            cameraFovTween = seq;
-        }
-        else
-        {
-            if (cachedBaseFov < 0f) cachedBaseFov = cam.fieldOfView;
-            float baseFov = cachedBaseFov;
-            float targetFov = Mathf.Max(15f, baseFov - matchCameraFovPunch);
-
-            Sequence seq = DOTween.Sequence();
-            seq.Append(cam.DOFieldOfView(targetFov, zoomInDuration).SetEase(Ease.InOutSine));
-            seq.Append(cam.DOFieldOfView(baseFov, zoomOutDuration).SetEase(Ease.InOutSine));
-            seq.OnComplete(() => { if (cam != null) cam.fieldOfView = baseFov; });
-            seq.OnKill(() => { if (cam != null) cam.fieldOfView = baseFov; });
-            cameraFovTween = seq;
-        }
     }
 
     private void ResolveBombExplosion(MatchItem leftItem, MatchItem centerItem, MatchItem rightItem, Vector3 dockCenterPos)
