@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using DG.Tweening;
+using MegaFiers;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -74,6 +76,23 @@ public class MatchItem : MonoBehaviour
     private float currentFlashAmount = 0f;
     private Tween iceMeltTween;
     private Tween iceFlashTween;
+    private Tween flightStretchTween;
+    private Tween dockIdleBobTween;
+    private Tween dockIdleSwayTween;
+    private Tween dockPairPulseTween;
+    private Vector3 initialVisualLocalPos;
+    private Quaternion initialVisualLocalRot = Quaternion.identity;
+    private Vector3 initialVisualLocalScale = Vector3.one;
+    private bool hasCachedVisualPose;
+    private bool isPairPulseActive;
+    private MegaModifyObject mainModObj;
+    private MegaStretch mainStretch;
+    private MegaModifyObject outlineModObj;
+    private MegaStretch outlineStretch;
+    private float currentStretchAmount;
+    private Vector3 flightTargetWorldPos;
+    private bool stretchInitialized;
+    private static readonly Dictionary<Mesh, Mesh> subdividedMeshCache = new();
     private bool subscribedToMatchEvent = false;
     private static float lastIceMeltSoundTime = -1f;
     private static float lastSelectSoundTime = -1f;
@@ -142,6 +161,7 @@ public class MatchItem : MonoBehaviour
         {
             initialOutlineScale = outline.OutlineRenderer.transform.localScale;
         }
+        CacheVisualIdlePose();
 
         // 3. Apply mystery visual at runtime only (never bake into prefab in Edit Mode; bombs are never mystery)
         if (Application.isPlaying && isMystery && !isBomb && !isRevealed)
@@ -158,11 +178,21 @@ public class MatchItem : MonoBehaviour
         isInitialized = true;
     }
 
+    private void OnDisable()
+    {
+        flightStretchTween?.Kill();
+        StopDockIdle();
+    }
+
     private void OnDestroy()
     {
         UnsubscribeFromMatchEvent();
         iceMeltTween?.Kill();
         iceFlashTween?.Kill();
+        flightStretchTween?.Kill();
+        dockIdleBobTween?.Kill();
+        dockIdleSwayTween?.Kill();
+        dockPairPulseTween?.Kill();
     }
 
     private void InitOutline()
@@ -204,6 +234,7 @@ public class MatchItem : MonoBehaviour
         }
 
         ScaleVisualRenderers(1.12f, 0.08f, Ease.OutBack);
+        PlaySelectSquish();
 
         Taptic.Light();
     }
@@ -271,6 +302,7 @@ public class MatchItem : MonoBehaviour
         }
 
         ScaleVisualRenderers(1f, 0.08f, Ease.OutQuad);
+        flightStretchTween?.Kill();
     }
 
     public void PlayClickFeedback(Action onComplete = null)
@@ -314,13 +346,25 @@ public class MatchItem : MonoBehaviour
             // Wake up resting rigidbodies lying on or touching this card
             WakeNearbyRigidbodies(pickPosition, physicsWakeRadius);
 
-            if (newState == ItemState.InDock && isMystery && !isRevealed)
+            if (newState == ItemState.InDock)
             {
-                RevealMystery();
+                if (isMystery && !isRevealed)
+                {
+                    RevealMystery();
+                }
+                if (Application.isPlaying)
+                {
+                    StartDockIdle();
+                }
+            }
+            else
+            {
+                StopDockIdle();
             }
         }
         else if (newState == ItemState.InPhysics)
         {
+            StopDockIdle();
             if (itemCollider != null)
             {
                 itemCollider.enabled = true;
@@ -734,6 +778,354 @@ public class MatchItem : MonoBehaviour
         icePropertyBlock.SetFloat(FlashAmountProp, currentFlashAmount);
         icePropertyBlock.SetFloat(AlphaMultiplierProp, 1f);
         iceRenderer.SetPropertyBlock(icePropertyBlock);
+    }
+
+    #endregion
+
+    #region MegaFiers Velocity Stretch
+
+    /// <summary>
+    /// Plays a subtle, tactile jelly squish-pop when the player's finger presses or hovers over this item.
+    /// </summary>
+    private void PlaySelectSquish()
+    {
+        if (!Application.isPlaying || isBomb) return;
+
+        EnsureStretchModifiersInitialized();
+        if (mainStretch == null) return;
+
+        flightStretchTween?.Kill();
+        SetStretchModifiersEnabled(true);
+        if (mainStretch != null) mainStretch.gizmoRot = Vector3.zero;
+        if (outlineStretch != null) outlineStretch.gizmoRot = Vector3.zero;
+        SetStretchAmount(0f);
+
+        Sequence seq = DOTween.Sequence();
+        seq.Append(DOTween.To(() => currentStretchAmount, SetStretchAmount, -0.10f, 0.06f).SetEase(Ease.OutQuad));
+        seq.Append(DOTween.To(() => currentStretchAmount, SetStretchAmount, 0.05f, 0.07f).SetEase(Ease.OutQuad));
+        seq.Append(DOTween.To(() => currentStretchAmount, SetStretchAmount, 0f, 0.09f).SetEase(Ease.OutBack));
+        seq.OnComplete(StopAndResetStretch);
+        seq.OnKill(StopAndResetStretch);
+        flightStretchTween = seq;
+    }
+
+    /// <summary>
+    /// Plays a subtle horizontal stretch and mini settle squash while sliding between dock slots.
+    /// </summary>
+    public void PlaySlideStretch(float duration, float delay = 0f)
+    {
+        if (!Application.isPlaying || isBomb) return;
+
+        EnsureStretchModifiersInitialized();
+        if (mainStretch == null) return;
+
+        flightStretchTween?.Kill();
+        SetStretchModifiersEnabled(true);
+        ApplyStretchDirection(mainStretch, Vector3.right);
+        ApplyStretchDirection(outlineStretch, Vector3.right);
+        SetStretchAmount(0f);
+
+        float halfDur = Mathf.Max(0.04f, duration * 0.55f);
+        float settleDur = Mathf.Max(0.04f, duration - halfDur);
+
+        Sequence seq = DOTween.Sequence();
+        if (delay > 0f) seq.AppendInterval(delay);
+        seq.Append(DOTween.To(() => currentStretchAmount, SetStretchAmount, 0.12f, halfDur).SetEase(Ease.OutQuad));
+        seq.Append(DOTween.To(() => currentStretchAmount, SetStretchAmount, -0.06f, settleDur * 0.6f).SetEase(Ease.InQuad));
+        seq.Append(DOTween.To(() => currentStretchAmount, SetStretchAmount, 0f, settleDur * 0.4f).SetEase(Ease.OutBack));
+        seq.OnComplete(StopAndResetStretch);
+        seq.OnKill(StopAndResetStretch);
+        flightStretchTween = seq;
+    }
+
+    /// <summary>
+    /// Stretches the item horizontally along the dock axis as it is pulled toward the center match slot.
+    /// </summary>
+    public void PlayMergeStretch(float duration)
+    {
+        if (!Application.isPlaying || isBomb) return;
+
+        EnsureStretchModifiersInitialized();
+        if (mainStretch == null) return;
+
+        flightStretchTween?.Kill();
+        SetStretchModifiersEnabled(true);
+        ApplyStretchDirection(mainStretch, Vector3.right);
+        ApplyStretchDirection(outlineStretch, Vector3.right);
+        SetStretchAmount(0f);
+
+        float pullDur = Mathf.Max(0.05f, duration * 0.75f);
+        float impactDur = Mathf.Max(0.04f, duration - pullDur + 0.05f);
+
+        Sequence seq = DOTween.Sequence();
+        seq.Append(DOTween.To(() => currentStretchAmount, SetStretchAmount, 0.38f, pullDur).SetEase(Ease.OutQuad));
+        seq.Append(DOTween.To(() => currentStretchAmount, SetStretchAmount, -0.15f, impactDur).SetEase(Ease.InQuad));
+        seq.Append(DOTween.To(() => currentStretchAmount, SetStretchAmount, 0f, 0.06f).SetEase(Ease.OutQuad));
+        seq.OnComplete(StopAndResetStretch);
+        seq.OnKill(StopAndResetStretch);
+        flightStretchTween = seq;
+    }
+
+    /// <summary>
+    /// Plays a subtle velocity-aligned stretch while flying to the dock and a gentle squash upon landing.
+    /// Lazily attaches MegaModifyObject + MegaStretch on first use and disables them once settled for zero idle CPU cost.
+    /// </summary>
+    public void PlayFlightStretch(float flightDuration, Vector3 targetWorldPos)
+    {
+        if (!Application.isPlaying || isBomb) return;
+
+        EnsureStretchModifiersInitialized();
+        if (mainStretch == null) return;
+
+        flightTargetWorldPos = targetWorldPos;
+        flightStretchTween?.Kill();
+        SetStretchModifiersEnabled(true);
+        SetStretchAmount(0f);
+        UpdateStretchDirection();
+
+        float riseDuration = Mathf.Max(0.06f, flightDuration * 0.42f);
+        float fallDuration = Mathf.Max(0.06f, flightDuration - riseDuration);
+
+        Sequence seq = DOTween.Sequence();
+        seq.Append(DOTween.To(() => currentStretchAmount, SetStretchAmount, 0.13f, riseDuration).SetEase(Ease.OutQuad));
+        seq.Append(DOTween.To(() => currentStretchAmount, SetStretchAmount, -0.08f, fallDuration).SetEase(Ease.InQuad));
+        seq.Append(DOTween.To(() => currentStretchAmount, SetStretchAmount, 0f, 0.12f).SetEase(Ease.OutBack));
+
+        seq.OnUpdate(UpdateStretchDirection);
+        seq.OnComplete(StopAndResetStretch);
+        seq.OnKill(StopAndResetStretch);
+        flightStretchTween = seq;
+    }
+
+    private void EnsureStretchModifiersInitialized()
+    {
+        if (stretchInitialized) return;
+        stretchInitialized = true;
+
+        if (mainRenderer == null)
+        {
+            mainRenderer = outline != null && outline.MainMeshRenderer != null
+                ? outline.MainMeshRenderer
+                : GetComponentInChildren<MeshRenderer>();
+        }
+
+        if (mainRenderer != null)
+        {
+            AttachStretchToMeshObject(mainRenderer.gameObject, out mainModObj, out mainStretch);
+        }
+
+        if (outline != null && outline.OutlineRenderer != null && outline.OutlineRenderer != mainRenderer)
+        {
+            AttachStretchToMeshObject(outline.OutlineRenderer.gameObject, out outlineModObj, out outlineStretch);
+        }
+    }
+
+    private static void AttachStretchToMeshObject(GameObject targetGo, out MegaModifyObject modObj, out MegaStretch stretch)
+    {
+        modObj = null;
+        stretch = null;
+        if (targetGo == null) return;
+
+        MeshFilter mf = targetGo.GetComponent<MeshFilter>();
+        if (mf == null || mf.sharedMesh == null || !mf.sharedMesh.isReadable) return;
+
+        mf.sharedMesh = GetOrCreateSubdividedMesh(mf.sharedMesh);
+
+        stretch = targetGo.GetComponent<MegaStretch>();
+        if (stretch == null)
+        {
+            stretch = targetGo.AddComponent<MegaStretch>();
+        }
+        stretch.axis = MegaAxis.X;
+        stretch.amplify = 0.15f;
+        stretch.amount = 0f;
+
+        modObj = targetGo.GetComponent<MegaModifyObject>();
+        if (modObj == null)
+        {
+            modObj = targetGo.AddComponent<MegaModifyObject>();
+        }
+        modObj.NormalMethod = MegaNormalMethod.None;
+        modObj.TangentMethod = MegaTangentMethod.None;
+        modObj.InvisibleUpdate = true;
+        modObj.recalcbounds = false;
+        modObj.recalcCollider = false;
+        modObj.MeshChanged();
+    }
+
+    private void UpdateStretchDirection()
+    {
+        Vector3 worldDir = flightTargetWorldPos - transform.position;
+        worldDir.y = 0f;
+        if (worldDir.sqrMagnitude < 0.001f) return;
+
+        worldDir.Normalize();
+        ApplyStretchDirection(mainStretch, worldDir);
+        ApplyStretchDirection(outlineStretch, worldDir);
+    }
+
+    private static void ApplyStretchDirection(MegaStretch stretch, Vector3 worldDir)
+    {
+        if (stretch == null) return;
+
+        Vector3 localDir = stretch.transform.InverseTransformDirection(worldDir);
+        if (localDir.sqrMagnitude < 0.0001f) return;
+
+        stretch.gizmoRot = Quaternion.FromToRotation(Vector3.right, localDir.normalized).eulerAngles;
+    }
+
+    private static Mesh GetOrCreateSubdividedMesh(Mesh sourceMesh)
+    {
+        if (sourceMesh == null) return null;
+        if (subdividedMeshCache.TryGetValue(sourceMesh, out Mesh cached) && cached != null)
+        {
+            return cached;
+        }
+
+        Mesh dup = MegaUtils.DupMesh(sourceMesh, "_Sub");
+        MeshHelper.Subdivide(dup, 4);
+        subdividedMeshCache[sourceMesh] = dup;
+        return dup;
+    }
+
+    private void SetStretchAmount(float amount)
+    {
+        currentStretchAmount = amount;
+        if (mainStretch != null) mainStretch.amount = amount;
+        if (outlineStretch != null) outlineStretch.amount = amount;
+    }
+
+    private void SetStretchModifiersEnabled(bool active)
+    {
+        if (mainModObj != null)
+        {
+            mainModObj.enabled = active;
+            mainModObj.Enabled = active;
+        }
+        if (outlineModObj != null)
+        {
+            outlineModObj.enabled = active;
+            outlineModObj.Enabled = active;
+        }
+    }
+
+    private void StopAndResetStretch()
+    {
+        SetStretchAmount(0f);
+        if (mainStretch != null) mainStretch.gizmoRot = Vector3.zero;
+        if (outlineStretch != null) outlineStretch.gizmoRot = Vector3.zero;
+        if (mainModObj != null) mainModObj.Reset();
+        if (outlineModObj != null) outlineModObj.Reset();
+        SetStretchModifiersEnabled(false);
+    }
+
+    #endregion
+
+    #region Dock Idle Animation
+
+    private Transform GetIdleVisualTransform()
+    {
+        if (mainRenderer == null) return null;
+        Transform t = mainRenderer.transform;
+        if (t.parent != null && t.parent != transform)
+        {
+            return t.parent;
+        }
+        return t;
+    }
+
+    private void CacheVisualIdlePose()
+    {
+        if (hasCachedVisualPose) return;
+        Transform idleTarget = GetIdleVisualTransform();
+        if (idleTarget != null)
+        {
+            initialVisualLocalPos = idleTarget.localPosition;
+            initialVisualLocalRot = idleTarget.localRotation;
+            initialVisualLocalScale = idleTarget.localScale;
+            hasCachedVisualPose = true;
+        }
+    }
+
+    private void StartDockIdle()
+    {
+        Transform idleTarget = GetIdleVisualTransform();
+        if (idleTarget == null) return;
+
+        CacheVisualIdlePose();
+        StopDockIdle();
+
+        float bobDelay = UnityEngine.Random.Range(0f, 0.3f);
+        float bobDuration = UnityEngine.Random.Range(1.15f, 1.4f);
+        float swayDelay = UnityEngine.Random.Range(0f, 0.3f);
+        float swayDuration = UnityEngine.Random.Range(1.3f, 1.6f);
+        float swaySign = UnityEngine.Random.value > 0.5f ? 1f : -1f;
+
+        Vector3 bobTarget = initialVisualLocalPos + new Vector3(0f, 0.03f, 0.025f);
+        dockIdleBobTween = idleTarget.DOLocalMove(bobTarget, bobDuration)
+            .SetDelay(bobDelay)
+            .SetEase(Ease.InOutSine)
+            .SetLoops(-1, LoopType.Yoyo);
+
+        Vector3 baseEuler = initialVisualLocalRot.eulerAngles;
+        dockIdleSwayTween = idleTarget.DOLocalRotate(baseEuler + new Vector3(0f, 3.5f * swaySign, 0f), swayDuration)
+            .SetDelay(swayDelay)
+            .SetEase(Ease.InOutSine)
+            .SetLoops(-1, LoopType.Yoyo);
+    }
+
+    /// <summary>
+    /// Gently pulses the item's visual mesh when 2 of the same type are waiting in the dock (2/3 ready).
+    /// </summary>
+    public void SetDockPairPulse(bool active)
+    {
+        if (isBomb || currentState != ItemState.InDock)
+        {
+            active = false;
+        }
+
+        if (isPairPulseActive == active) return;
+        isPairPulseActive = active;
+
+        dockPairPulseTween?.Kill();
+        dockPairPulseTween = null;
+
+        Transform idleTarget = GetIdleVisualTransform();
+        if (idleTarget == null) return;
+
+        CacheVisualIdlePose();
+
+        if (active)
+        {
+            idleTarget.localScale = initialVisualLocalScale;
+            dockPairPulseTween = idleTarget.DOScale(initialVisualLocalScale * 1.055f, 0.55f)
+                .SetEase(Ease.InOutSine)
+                .SetLoops(-1, LoopType.Yoyo);
+        }
+        else
+        {
+            dockPairPulseTween = idleTarget.DOScale(initialVisualLocalScale, 0.14f).SetEase(Ease.OutQuad);
+        }
+    }
+
+    private void StopDockIdle()
+    {
+        dockIdleBobTween?.Kill();
+        dockIdleSwayTween?.Kill();
+        dockPairPulseTween?.Kill();
+        dockIdleBobTween = null;
+        dockIdleSwayTween = null;
+        dockPairPulseTween = null;
+        isPairPulseActive = false;
+
+        if (!hasCachedVisualPose) return;
+        Transform idleTarget = GetIdleVisualTransform();
+        if (idleTarget != null)
+        {
+            idleTarget.localPosition = initialVisualLocalPos;
+            idleTarget.localRotation = initialVisualLocalRot;
+            idleTarget.localScale = initialVisualLocalScale;
+        }
     }
 
     #endregion

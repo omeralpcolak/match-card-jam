@@ -54,6 +54,8 @@ public class DockManager : MonoBehaviour
     private bool isResolvingMatch = false;
     private bool isBombExploding = false;
     private readonly Queue<MatchItem> pendingItems = new();
+    private float lastMatchSoundTime = -10f;
+    private int matchPitchCombo = 0;
 
     public int Capacity => capacity;
     public IReadOnlyList<DockSlot> Slots => slots;
@@ -287,10 +289,11 @@ public class DockManager : MonoBehaviour
                 slots[i].Clear();
 
                 activeMovingCount++;
+                float staggerDelay = (lastOccupied - i) * 0.025f;
                 slots[i + 1].SlideItemToHere(shiftingItem, slideDuration, Ease.OutQuad, () =>
                 {
                     OnMovementFinished();
-                });
+                }, staggerDelay);
             }
         }
     }
@@ -403,17 +406,33 @@ public class DockManager : MonoBehaviour
         centerItem.PlayClickFeedback();
         rightItem.PlayClickFeedback();
 
-        SoundManager.PlaySound(SoundType.CardMatch);
+        PlayMatchSoundWithCombo();
+
+        // Stage 2: Brief outward anticipation pull-back, then stretch & slam into center
+        const float pullBackOffset = 0.18f;
+        const float pullBackDuration = 0.07f;
+        Vector3 leftPullPos = leftItem.transform.position - (matchCenterWorldPos - leftItem.transform.position).normalized * pullBackOffset;
+        Vector3 rightPullPos = rightItem.transform.position - (matchCenterWorldPos - rightItem.transform.position).normalized * pullBackOffset;
 
         Sequence matchSeq = DOTween.Sequence();
 
-        // Stage 2: Left and right cards converge towards center card
+        matchSeq.Append(leftItem.transform.DOMove(leftPullPos, pullBackDuration).SetEase(Ease.OutQuad));
+        matchSeq.Join(rightItem.transform.DOMove(rightPullPos, pullBackDuration).SetEase(Ease.OutQuad));
+        matchSeq.AppendCallback(() =>
+        {
+            if (leftItem != null) leftItem.PlayMergeStretch(matchConvergeDuration);
+            if (rightItem != null) rightItem.PlayMergeStretch(matchConvergeDuration);
+        });
         matchSeq.Append(leftItem.transform.DOMove(matchCenterWorldPos, matchConvergeDuration).SetEase(Ease.InQuad));
         matchSeq.Join(rightItem.transform.DOMove(matchCenterWorldPos, matchConvergeDuration).SetEase(Ease.InQuad));
         matchSeq.Join(centerItem.transform.DOPunchScale(Vector3.one * 0.15f, matchConvergeDuration, 1, 0.5f));
 
-        // Stage 3: Quick anticipation swell before shrinking to zero
+        // Stage 3: Quick anticipation swell + center slot flash on impact before shrinking to zero
         Vector3 centerScale = centerItem.transform.localScale;
+        matchSeq.AppendCallback(() =>
+        {
+            if (centerSlot != null) centerSlot.PlayMatchFlash();
+        });
         matchSeq.Append(leftItem.transform.DOScale(centerScale * 1.18f, 0.06f).SetEase(Ease.OutQuad));
         matchSeq.Join(centerItem.transform.DOScale(centerScale * 1.18f, 0.06f).SetEase(Ease.OutQuad));
         matchSeq.Join(rightItem.transform.DOScale(centerScale * 1.18f, 0.06f).SetEase(Ease.OutQuad));
@@ -436,6 +455,22 @@ public class DockManager : MonoBehaviour
             // Slide remaining cards left to close the 3-slot gap
             CompactSlotsLeft();
         });
+    }
+
+    private void PlayMatchSoundWithCombo()
+    {
+        if (Time.unscaledTime - lastMatchSoundTime < 2.5f)
+        {
+            matchPitchCombo = Mathf.Min(matchPitchCombo + 1, 4);
+        }
+        else
+        {
+            matchPitchCombo = 0;
+        }
+        lastMatchSoundTime = Time.unscaledTime;
+
+        float pitch = 1f + matchPitchCombo * 0.05f;
+        SoundManager.PlaySound(SoundType.CardMatch, 1f, pitch);
     }
 
     private void ResolveBombExplosion(MatchItem leftItem, MatchItem centerItem, MatchItem rightItem, Vector3 dockCenterPos)
@@ -624,6 +659,7 @@ public class DockManager : MonoBehaviour
                     MatchItem itemToShift = slots[i].CurrentItem;
                     slots[i].Clear();
 
+                    float staggerDelay = shiftCount * 0.03f;
                     shiftCount++;
                     slots[nextTargetSlot].SlideItemToHere(itemToShift, slideDuration, Ease.OutQuad, () =>
                     {
@@ -638,7 +674,7 @@ public class DockManager : MonoBehaviour
                                 OnDockSettled?.Invoke();
                             }
                         }
-                    });
+                    }, staggerDelay);
                 }
                 nextTargetSlot++;
             }
@@ -677,6 +713,21 @@ public class DockManager : MonoBehaviour
         bool canWarn = isPlaying && !isResolvingMatch && !isBombExploding;
         bool warnLastEmpty = canWarn && CurrentItemCount == capacity - 1;
 
+        Dictionary<int, int> dockCounts = null;
+        if (canWarn)
+        {
+            dockCounts = new Dictionary<int, int>();
+            for (int i = 0; i < slots.Count; i++)
+            {
+                DockSlot slot = slots[i];
+                if (slot != null && !slot.IsEmpty && slot.CurrentItem != null && !slot.CurrentItem.IsBomb)
+                {
+                    int id = slot.CurrentItem.Id;
+                    dockCounts[id] = dockCounts.TryGetValue(id, out int c) ? c + 1 : 1;
+                }
+            }
+        }
+
         for (int i = 0; i < slots.Count; i++)
         {
             DockSlot slot = slots[i];
@@ -684,6 +735,17 @@ public class DockManager : MonoBehaviour
 
             bool hasBomb = canWarn && !slot.IsEmpty && slot.CurrentItem != null && slot.CurrentItem.IsBomb;
             slot.SetWarningPulse(hasBomb || (warnLastEmpty && slot.IsEmpty));
+
+            if (!slot.IsEmpty && slot.CurrentItem != null)
+            {
+                bool isPairReady = canWarn &&
+                                   !slot.CurrentItem.IsBomb &&
+                                   slot.CurrentItem.CurrentState == MatchItem.ItemState.InDock &&
+                                   dockCounts != null &&
+                                   dockCounts.TryGetValue(slot.CurrentItem.Id, out int count) &&
+                                   count == 2;
+                slot.CurrentItem.SetDockPairPulse(isPairReady);
+            }
         }
     }
 
@@ -694,6 +756,10 @@ public class DockManager : MonoBehaviour
             if (slots[i] != null)
             {
                 slots[i].SetWarningPulse(false);
+                if (!slots[i].IsEmpty && slots[i].CurrentItem != null)
+                {
+                    slots[i].CurrentItem.SetDockPairPulse(false);
+                }
             }
         }
     }

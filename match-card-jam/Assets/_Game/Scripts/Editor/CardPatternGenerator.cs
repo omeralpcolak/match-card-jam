@@ -59,6 +59,9 @@ public static class CardPatternGenerator
 
     public static void BindTexturesToMaterials()
     {
+        EnsureModelReadable("Assets/_Game/Models/SolitaireCard.fbx");
+        EnsureModelReadable("Assets/_Game/Models/Dice_d6.fbx");
+
         Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit");
         bool dirty = false;
         foreach (var spec in DefaultSpecs)
@@ -90,6 +93,16 @@ public static class CardPatternGenerator
         if (dirty)
         {
             AssetDatabase.SaveAssets();
+        }
+    }
+
+    private static void EnsureModelReadable(string modelPath)
+    {
+        ModelImporter importer = AssetImporter.GetAtPath(modelPath) as ModelImporter;
+        if (importer != null && !importer.isReadable)
+        {
+            importer.isReadable = true;
+            importer.SaveAndReimport();
         }
     }
 }

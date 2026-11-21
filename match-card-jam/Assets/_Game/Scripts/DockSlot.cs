@@ -60,6 +60,7 @@ public class DockSlot : MonoBehaviour
         Transform targetParent = MatchItemRoot;
         item.transform.SetParent(targetParent, true);
         item.transform.DOKill();
+        item.PlayFlightStretch(duration, targetParent.position);
 
         float riseDuration = duration * 0.42f;
         float fallDuration = duration - riseDuration;
@@ -119,29 +120,23 @@ public class DockSlot : MonoBehaviour
     }
 
     /// <summary>
-    /// Smoothly slides an existing card into this new slot with a snappy spring ease and subtle tilt when items shift or gaps close.
+    /// Smoothly hops an existing card into this new slot with a subtle arc, stretch, and optional stagger delay.
     /// </summary>
-    public void SlideItemToHere(MatchItem item, float duration, Ease ease = Ease.OutBack, Action onComplete = null)
+    public void SlideItemToHere(MatchItem item, float duration, Ease ease = Ease.OutBack, Action onComplete = null, float delay = 0f)
     {
         currentItem = item;
 
         Transform targetParent = MatchItemRoot;
-        float moveDir = Mathf.Sign(targetParent.position.x - item.transform.position.x);
-        float tiltAngle = Mathf.Abs(targetParent.position.x - item.transform.position.x) > 0.05f ? -6f * moveDir : 0f;
-
         item.transform.SetParent(targetParent, true);
         item.transform.DOKill();
+        item.PlaySlideStretch(duration, delay);
 
         Vector3 finalScale = GetTargetScale(item);
 
         Sequence seq = DOTween.Sequence();
-        seq.Join(item.transform.DOLocalMove(Vector3.zero, duration).SetEase(Ease.OutBack, 1.1f));
-
-        Sequence rotSeq = DOTween.Sequence();
-        rotSeq.Append(item.transform.DOLocalRotate(new Vector3(0f, 0f, tiltAngle), duration * 0.4f).SetEase(Ease.OutQuad));
-        rotSeq.Append(item.transform.DOLocalRotate(Vector3.zero, duration * 0.6f).SetEase(Ease.OutBack));
-        seq.Join(rotSeq);
-
+        if (delay > 0f) seq.SetDelay(delay);
+        seq.Join(item.transform.DOLocalJump(Vector3.zero, 0.22f, 1, duration).SetEase(Ease.OutQuad));
+        seq.Join(item.transform.DOLocalRotate(Vector3.zero, duration).SetEase(Ease.OutQuad));
         seq.Join(item.transform.DOScale(finalScale, duration).SetEase(Ease.OutQuad));
 
         bool callbackInvoked = false;
@@ -240,6 +235,62 @@ public class DockSlot : MonoBehaviour
             slotImage.material = defaultImageMaterial;
             slotImage.DOColor(defaultImageColor, 0.14f).SetEase(Ease.OutQuad);
             slotImage.rectTransform.DOScale(defaultImageScale, 0.14f).SetEase(Ease.OutQuad);
+        }
+    }
+
+    /// <summary>
+    /// Plays a brief golden-white flash and subtle scale pop on the center slot when 3 items match.
+    /// </summary>
+    public void PlayMatchFlash()
+    {
+        if (isWarningActive) return;
+
+        EnsureVisualCached();
+        if (slotImage == null) return;
+
+        warningTween?.Kill();
+
+        if (EnsureWarningMaterial())
+        {
+            slotImage.material = warningMaterialInstance;
+            warningMaterialInstance.SetColor(WarningColorProp, new Color(1f, 0.88f, 0.38f, 1f));
+            warningMaterialInstance.SetFloat(WarningIntensityProp, 0f);
+
+            Sequence s = DOTween.Sequence();
+            s.Append(DOTween.To(
+                () => warningMaterialInstance != null ? warningMaterialInstance.GetFloat(WarningIntensityProp) : 0f,
+                v => { if (warningMaterialInstance != null) warningMaterialInstance.SetFloat(WarningIntensityProp, v); },
+                0.85f,
+                0.08f
+            ).SetEase(Ease.OutQuad));
+            s.Join(slotImage.rectTransform.DOScale(defaultImageScale * 1.1f, 0.08f).SetEase(Ease.OutQuad));
+
+            s.Append(DOTween.To(
+                () => warningMaterialInstance != null ? warningMaterialInstance.GetFloat(WarningIntensityProp) : 0f,
+                v => { if (warningMaterialInstance != null) warningMaterialInstance.SetFloat(WarningIntensityProp, v); },
+                0f,
+                0.2f
+            ).SetEase(Ease.OutQuad));
+            s.Join(slotImage.rectTransform.DOScale(defaultImageScale, 0.2f).SetEase(Ease.OutBack));
+
+            s.OnComplete(() =>
+            {
+                if (!isWarningActive && slotImage != null)
+                {
+                    slotImage.material = defaultImageMaterial;
+                    slotImage.rectTransform.localScale = defaultImageScale;
+                }
+            });
+            s.OnKill(() =>
+            {
+                if (!isWarningActive && slotImage != null)
+                {
+                    if (warningMaterialInstance != null) warningMaterialInstance.SetFloat(WarningIntensityProp, 0f);
+                    slotImage.material = defaultImageMaterial;
+                    slotImage.rectTransform.localScale = defaultImageScale;
+                }
+            });
+            warningTween = s;
         }
     }
 
